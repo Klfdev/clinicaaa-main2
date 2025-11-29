@@ -57,11 +57,9 @@ export function AuthProvider({ children }) {
             }
 
             if (!profileData) {
-                console.log("AuthContext: Profile not found via RPC.");
                 setProfile(null);
                 setOrganization(null);
             } else {
-                console.log("AuthContext: Profile found:", profileData);
                 setProfile(profileData);
 
                 if (profileData.organization_id) {
@@ -74,7 +72,6 @@ export function AuthProvider({ children }) {
                     if (orgError) {
                         console.error("AuthContext: Error fetching org:", orgError);
                     } else {
-                        console.log("AuthContext: Org found:", orgData);
                         setOrganization(orgData);
                     }
                 } else {

@@ -157,7 +157,7 @@ export default function Layout({ children }) {
                                     {profile?.full_name || user?.email?.split('@')[0] || 'Usuário'}
                                 </p>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">
-                                    {profile?.role || 'Usuário'} • v1.1
+                                    {profile?.role || 'Usuário'}
                                 </p>
                             </div>
                         </div>
