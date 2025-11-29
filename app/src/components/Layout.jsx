@@ -58,7 +58,32 @@ export default function Layout({ children }) {
         }
     };
 
-    const menuItems = [
+    const ROLE_PERMISSIONS = {
+        admin: ['*'], // Access to everything
+        veterinario: [
+            '/',
+            '/agendamentos',
+            '/pacientes',
+            '/prontuarios',
+            '/vacinas',
+            '/internacoes',
+            '/medicamentos',
+            '/receitas',
+            '/exames',
+            '/estoque' // Vets might need to check stock
+        ],
+        recepcionista: [
+            '/',
+            '/agendamentos',
+            '/pacientes',
+            '/vendas',
+            '/financeiro', // Maybe restricted view?
+            '/estoque',
+            '/relatorios'
+        ]
+    };
+
+    const allMenuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
         { icon: Calendar, label: 'Agendamentos', path: '/agendamentos' },
         { icon: Users, label: 'Pacientes', path: '/pacientes' },
@@ -74,6 +99,14 @@ export default function Layout({ children }) {
         { icon: PieChart, label: 'Relatórios', path: '/relatorios' },
         { icon: Settings, label: 'Configurações', path: '/configuracoes' },
     ];
+
+    const userRole = profile?.role || 'recepcionista'; // Default to lowest privilege if undefined
+
+    const menuItems = allMenuItems.filter(item => {
+        if (userRole === 'admin') return true;
+        const allowedPaths = ROLE_PERMISSIONS[userRole] || [];
+        return allowedPaths.includes(item.path);
+    });
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">

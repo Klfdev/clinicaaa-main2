@@ -20,6 +20,7 @@ import Relatorios from './pages/Relatorios';
 import Exames from './pages/Exames';
 import PublicLayout from './components/PublicLayout';
 import PublicScheduling from './pages/PublicScheduling';
+import RoleRoute from './components/RoleRoute';
 
 const PrivateRoute = ({ children }) => {
   const { user, profile, loading } = useAuth();
@@ -54,21 +55,29 @@ function App() {
             <Route path="/agendar/:slug" element={<PublicScheduling />} />
           </Route>
 
-          {/* Private Routes */}
+          {/* Private Routes (Protected by Role) */}
           <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-          <Route path="/pacientes" element={<PrivateRoute><Pacientes /></PrivateRoute>} />
-          <Route path="/agendamentos" element={<PrivateRoute><Agendamentos /></PrivateRoute>} />
-          <Route path="/prontuarios" element={<PrivateRoute><Prontuarios /></PrivateRoute>} />
-          <Route path="/vacinas" element={<PrivateRoute><Vacinas /></PrivateRoute>} />
-          <Route path="/estoque" element={<PrivateRoute><Estoque /></PrivateRoute>} />
-          <Route path="/vendas" element={<PrivateRoute><Vendas /></PrivateRoute>} />
-          <Route path="/financeiro" element={<PrivateRoute><Financeiro /></PrivateRoute>} />
-          <Route path="/medicamentos" element={<PrivateRoute><Medicamentos /></PrivateRoute>} />
-          <Route path="/receitas" element={<PrivateRoute><Receitas /></PrivateRoute>} />
-          <Route path="/internacoes" element={<PrivateRoute><Internacoes /></PrivateRoute>} />
-          <Route path="/configuracoes" element={<PrivateRoute><Configuracoes /></PrivateRoute>} />
-          <Route path="/relatorios" element={<PrivateRoute><Relatorios /></PrivateRoute>} />
-          <Route path="/exames" element={<PrivateRoute><Exames /></PrivateRoute>} />
+
+          {/* Shared Routes */}
+          <Route path="/agendamentos" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario', 'recepcionista']}><Agendamentos /></RoleRoute></PrivateRoute>} />
+          <Route path="/pacientes" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario', 'recepcionista']}><Pacientes /></RoleRoute></PrivateRoute>} />
+          <Route path="/estoque" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario', 'recepcionista']}><Estoque /></RoleRoute></PrivateRoute>} />
+
+          {/* Veterinarian Routes */}
+          <Route path="/prontuarios" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Prontuarios /></RoleRoute></PrivateRoute>} />
+          <Route path="/vacinas" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Vacinas /></RoleRoute></PrivateRoute>} />
+          <Route path="/medicamentos" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Medicamentos /></RoleRoute></PrivateRoute>} />
+          <Route path="/receitas" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Receitas /></RoleRoute></PrivateRoute>} />
+          <Route path="/internacoes" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Internacoes /></RoleRoute></PrivateRoute>} />
+          <Route path="/exames" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Exames /></RoleRoute></PrivateRoute>} />
+
+          {/* Receptionist/Admin Routes */}
+          <Route path="/vendas" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'recepcionista']}><Vendas /></RoleRoute></PrivateRoute>} />
+          <Route path="/financeiro" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'recepcionista']}><Financeiro /></RoleRoute></PrivateRoute>} />
+          <Route path="/relatorios" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'recepcionista']}><Relatorios /></RoleRoute></PrivateRoute>} />
+
+          {/* Admin Only */}
+          <Route path="/configuracoes" element={<PrivateRoute><RoleRoute allowedRoles={['admin']}><Configuracoes /></RoleRoute></PrivateRoute>} />
         </Routes>
       </AuthProvider>
     </Router>
