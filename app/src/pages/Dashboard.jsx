@@ -12,7 +12,9 @@ import {
     Activity,
     AlertCircle,
     ArrowRight,
-    Clock
+    Clock,
+    UserPlus,
+    Syringe
 } from 'lucide-react';
 import {
     Chart as ChartJS,
@@ -21,9 +23,10 @@ import {
     BarElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    ArcElement
 } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Pie } from 'react-chartjs-2';
 import { supabase } from '../lib/supabase';
 
 ChartJS.register(
@@ -32,7 +35,8 @@ ChartJS.register(
     BarElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    ArcElement
 );
 
 export default function Dashboard() {
@@ -41,7 +45,8 @@ export default function Dashboard() {
         pacientes: 0,
         agendamentosHoje: 0,
         vendasHoje: 0,
-        faturamentoMes: 0
+        faturamentoMes: 0,
+        novosClientes: 0
     });
     const [loading, setLoading] = useState(true);
 
@@ -50,14 +55,16 @@ export default function Dashboard() {
     const [chartData, setChartData] = useState({ labels: [], datasets: [] });
     const [financialData, setFinancialData] = useState({ labels: [], datasets: [] });
     const [inventoryData, setInventoryData] = useState({ labels: [], datasets: [] });
+    const [topProductsData, setTopProductsData] = useState({ labels: [], datasets: [] });
     const [alerts, setAlerts] = useState([]);
     const [weeklyAppointmentsList, setWeeklyAppointmentsList] = useState([]);
 
     const chartTypes = [
         { title: 'Atendimentos da Semana (Gráfico)', type: 'appointments' },
-        { title: 'Atendimentos da Semana (Lista)', type: 'appointments-list' },
+        { title: 'Top 5 Produtos/Serviços', type: 'top-products' },
         { title: 'Financeiro (Mês)', type: 'financial' },
-        { title: 'Estoque Baixo', type: 'inventory' }
+        { title: 'Estoque Baixo', type: 'inventory' },
+        { title: 'Atendimentos da Semana (Lista)', type: 'appointments-list' }
     ];
 
     const nextChart = () => {
@@ -124,14 +131,26 @@ export default function Dashboard() {
 
                 const faturamento = entradas - saidas;
 
+                // 5. Novos Clientes (Tutores criados este mês)
+                let novosClientesCount = 0;
+                const { count: tutoresCount, error: tutoresError } = await supabase
+                    .from('tutores')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('created_at', firstDayOfMonth);
+
+                if (!tutoresError) {
+                    novosClientesCount = tutoresCount;
+                }
+
                 setStats({
                     pacientes: pacientesCount || 0,
                     agendamentosHoje: agendamentosCount || 0,
                     vendasHoje: vendasCount || 0,
-                    faturamentoMes: faturamento
+                    faturamentoMes: faturamento,
+                    novosClientes: novosClientesCount
                 });
 
-                // 5. Chart Data: Appointments (Last 7 Days)
+                // 6. Chart Data: Appointments (Last 7 Days)
                 const { data: weeklyAppointments } = await supabase
                     .from('agendamentos')
                     .select('data, horario, "nomePet", servico')
@@ -168,7 +187,7 @@ export default function Dashboard() {
                     ],
                 });
 
-                // 6. Chart Data: Financial (Income vs Expense)
+                // 7. Chart Data: Financial (Income vs Expense)
                 setFinancialData({
                     labels: ['Entradas', 'Saídas'],
                     datasets: [
@@ -182,7 +201,41 @@ export default function Dashboard() {
                     ],
                 });
 
-                // 7. Chart Data: Inventory (Low Stock)
+                // 8. Chart Data: Top 5 Products
+                const { data: vendasMes } = await supabase
+                    .from('vendas')
+                    .select('itens')
+                    .gte('data_venda', firstDayOfMonth);
+
+                const productCounts = {};
+                vendasMes?.forEach(venda => {
+                    venda.itens.forEach(item => {
+                        productCounts[item.nome] = (productCounts[item.nome] || 0) + item.quantidade;
+                    });
+                });
+
+                const sortedProducts = Object.entries(productCounts)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 5);
+
+                setTopProductsData({
+                    labels: sortedProducts.map(([name]) => name),
+                    datasets: [
+                        {
+                            data: sortedProducts.map(([, count]) => count),
+                            backgroundColor: [
+                                'rgba(139, 92, 246, 0.7)',
+                                'rgba(59, 130, 246, 0.7)',
+                                'rgba(16, 185, 129, 0.7)',
+                                'rgba(245, 158, 11, 0.7)',
+                                'rgba(239, 68, 68, 0.7)',
+                            ],
+                            borderWidth: 1,
+                        },
+                    ],
+                });
+
+                // 9. Chart Data: Inventory (Low Stock)
                 const { data: lowStockItems } = await supabase
                     .from('estoque')
                     .select('nome, quantidade')
@@ -203,7 +256,10 @@ export default function Dashboard() {
                     ],
                 });
 
-                // 8. Alerts (Appointments + Low Stock)
+                // 10. Alerts (Appointments + Low Stock + Vaccines)
+                const newAlerts = [];
+
+                // 10.1 Appointments
                 const { data: upcomingAppointments } = await supabase
                     .from('agendamentos')
                     .select('data, horario, "nomePet", servico')
@@ -213,9 +269,6 @@ export default function Dashboard() {
                     .order('horario', { ascending: true })
                     .limit(5);
 
-                const newAlerts = [];
-
-                // Add Appointment Alerts
                 upcomingAppointments?.forEach(app => {
                     const isToday = app.data === todayStr;
                     newAlerts.push({
@@ -229,7 +282,33 @@ export default function Dashboard() {
                     });
                 });
 
-                // Add Low Stock Alerts
+                // 10.2 Vaccines (Next 7 days)
+                const sevenDaysFromNow = new Date();
+                sevenDaysFromNow.setDate(today.getDate() + 7);
+                const sevenDaysFromNowStr = sevenDaysFromNow.toISOString().split('T')[0];
+
+                const { data: upcomingVaccines } = await supabase
+                    .from('vacinas')
+                    .select('nome_vacina, data_revacina, nome_pet')
+                    .gte('data_revacina', todayStr)
+                    .lte('data_revacina', sevenDaysFromNowStr)
+                    .order('data_revacina', { ascending: true })
+                    .limit(5);
+
+                upcomingVaccines?.forEach(vac => {
+                    const isToday = vac.data_revacina === todayStr;
+                    newAlerts.push({
+                        type: 'vaccine',
+                        title: isToday ? 'Vacina Vence Hoje!' : 'Vacina Vencendo',
+                        message: `${vac.nome_pet} - ${vac.nome_vacina} (${new Date(vac.data_revacina).toLocaleDateString('pt-BR')})`,
+                        color: 'text-green-600',
+                        bg: 'bg-green-50 dark:bg-green-900/10',
+                        border: 'border-green-100 dark:border-green-900/30',
+                        dot: 'bg-green-500'
+                    });
+                });
+
+                // 10.3 Low Stock
                 lowStockItems?.forEach(item => {
                     newAlerts.push({
                         type: 'stock',
@@ -268,6 +347,19 @@ export default function Dashboard() {
                         scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                     }}
                 />
+            );
+        } else if (type === 'top-products') {
+            return (
+                <div className="h-full flex items-center justify-center">
+                    <Pie
+                        data={topProductsData}
+                        options={{
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'right' } }
+                        }}
+                    />
+                </div>
             );
         } else if (type === 'appointments-list') {
             return (
@@ -337,12 +429,12 @@ export default function Dashboard() {
             link: '/pacientes'
         },
         {
-            title: 'Agendamentos Hoje',
-            value: stats.agendamentosHoje,
-            icon: Calendar,
-            color: 'text-purple-600',
-            bg: 'bg-purple-100 dark:bg-purple-900/30',
-            link: '/agendamentos'
+            title: 'Novos Clientes (Mês)',
+            value: stats.novosClientes,
+            icon: UserPlus,
+            color: 'text-pink-600',
+            bg: 'bg-pink-100 dark:bg-pink-900/30',
+            link: '/tutores'
         },
         {
             title: 'Vendas Hoje',

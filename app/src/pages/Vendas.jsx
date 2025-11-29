@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card, { CardContent } from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
-import { Plus, Trash2, ShoppingCart, FileText, Search, X, Download, Eye } from 'lucide-react';
+import { Plus, Trash2, ShoppingCart, FileText, Search, X, Download, Eye, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,11 +14,13 @@ import toast, { Toaster } from 'react-hot-toast';
 export default function Vendas() {
     const [vendas, setVendas] = useState([]);
     const [produtos, setProdutos] = useState([]); // Includes services
+    const [vendedores, setVendedores] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // POS State
     const [carrinho, setCarrinho] = useState([]);
     const [cliente, setCliente] = useState('');
+    const [vendedorId, setVendedorId] = useState('');
     const [formaPagamento, setFormaPagamento] = useState('dinheiro');
     const [modalOpen, setModalOpen] = useState(false);
     const [modalProdutoOpen, setModalProdutoOpen] = useState(false);
@@ -37,7 +39,7 @@ export default function Vendas() {
             // Load Sales
             const { data: vendasData, error: vendasError } = await supabase
                 .from('vendas')
-                .select('*')
+                .select('*, profiles(full_name)')
                 .order('data_venda', { ascending: false });
             if (vendasError) throw vendasError;
             setVendas(vendasData || []);
@@ -55,6 +57,14 @@ export default function Vendas() {
             ].sort((a, b) => a.nome.localeCompare(b.nome));
 
             setProdutos(listaProdutos);
+
+            // Load Sellers (Profiles)
+            const { data: profilesData } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .order('full_name');
+            setVendedores(profilesData || []);
+
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
             toast.error("Erro ao carregar dados de vendas.");
@@ -98,7 +108,8 @@ export default function Vendas() {
                     cliente_nome: cliente,
                     forma_pagamento: formaPagamento,
                     itens: carrinho, // JSONB
-                    data_venda: new Date().toISOString()
+                    data_venda: new Date().toISOString(),
+                    vendedor_id: vendedorId || null
                 }]);
 
             if (vendaError) throw vendaError;
@@ -125,6 +136,7 @@ export default function Vendas() {
             toast.success('Venda registrada com sucesso!');
             setCarrinho([]);
             setCliente('');
+            setVendedorId('');
             setFormaPagamento('dinheiro');
             setModalOpen(false);
             carregarDados(); // Reload sales and inventory
@@ -181,6 +193,13 @@ export default function Vendas() {
         doc.setFont("helvetica", "normal");
         doc.text(`#${venda.id.toString().slice(0, 8)}`, 145, 62);
 
+        if (venda.profiles?.full_name) {
+            doc.setFont("helvetica", "bold");
+            doc.text("Vendedor:", 120, 69);
+            doc.setFont("helvetica", "normal");
+            doc.text(venda.profiles.full_name, 145, 69);
+        }
+
         // Table
         const body = venda.itens.map(item => [
             item.nome,
@@ -191,7 +210,7 @@ export default function Vendas() {
         ]);
 
         autoTable(doc, {
-            startY: 75,
+            startY: 80,
             head: [['Item / Serviço', 'Tipo', 'Valor Unit.', 'Qtd', 'Subtotal']],
             body: body,
             theme: 'striped',
@@ -281,6 +300,7 @@ export default function Vendas() {
                                 <tr>
                                     <th className="p-4">Data</th>
                                     <th className="p-4">Cliente</th>
+                                    <th className="p-4">Vendedor</th>
                                     <th className="p-4">Itens</th>
                                     <th className="p-4">Total</th>
                                     <th className="p-4 text-center">Ações</th>
@@ -288,9 +308,9 @@ export default function Vendas() {
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                                 {loading ? (
-                                    <tr><td colSpan="5" className="p-8 text-center text-gray-500">Carregando vendas...</td></tr>
+                                    <tr><td colSpan="6" className="p-8 text-center text-gray-500">Carregando vendas...</td></tr>
                                 ) : vendasFiltradas.length === 0 ? (
-                                    <tr><td colSpan="5" className="p-8 text-center text-gray-500">Nenhuma venda encontrada.</td></tr>
+                                    <tr><td colSpan="6" className="p-8 text-center text-gray-500">Nenhuma venda encontrada.</td></tr>
                                 ) : (
                                     vendasFiltradas.map((v) => {
                                         const total = v.itens.reduce((acc, i) => acc + (i.quantidade * i.preco), 0);
@@ -300,6 +320,7 @@ export default function Vendas() {
                                                     {new Date(v.data_venda).toLocaleDateString('pt-BR')}
                                                 </td>
                                                 <td className="p-4 font-medium text-gray-900 dark:text-white">{v.cliente_nome}</td>
+                                                <td className="p-4 text-sm text-gray-500">{v.profiles?.full_name || '-'}</td>
                                                 <td className="p-4 text-sm text-gray-500">{v.itens.length} itens</td>
                                                 <td className="p-4 font-bold text-green-600">R$ {total.toFixed(2)}</td>
                                                 <td className="p-4 flex justify-center gap-2">
@@ -378,11 +399,23 @@ export default function Vendas() {
                                     {/* Right: Cart & Checkout */}
                                     <div className="w-full lg:w-1/2 flex flex-col bg-gray-50 dark:bg-gray-900">
                                         <div className="p-6 border-b border-gray-200 dark:border-gray-700 space-y-4 bg-white dark:bg-gray-800">
-                                            <Input
-                                                placeholder="Nome do Cliente *"
-                                                value={cliente}
-                                                onChange={e => setCliente(e.target.value)}
-                                            />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Input
+                                                    placeholder="Nome do Cliente *"
+                                                    value={cliente}
+                                                    onChange={e => setCliente(e.target.value)}
+                                                />
+                                                <select
+                                                    value={vendedorId}
+                                                    onChange={e => setVendedorId(e.target.value)}
+                                                    className="flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 outline-none"
+                                                >
+                                                    <option value="">Selecione o Vendedor...</option>
+                                                    {vendedores.map(v => (
+                                                        <option key={v.id} value={v.id}>{v.full_name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
                                             <select
                                                 value={formaPagamento}
                                                 onChange={e => setFormaPagamento(e.target.value)}

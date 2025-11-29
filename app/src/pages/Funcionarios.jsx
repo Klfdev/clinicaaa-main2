@@ -23,6 +23,7 @@ export default function Funcionarios() {
         telefone: '',
         data_admissao: '',
         salario: '',
+        comissao_percentual: '',
         pix_chave: ''
     });
 
@@ -57,6 +58,7 @@ export default function Funcionarios() {
             telefone: func.telefone || '',
             data_admissao: func.data_admissao || '',
             salario: func.salario || '',
+            comissao_percentual: func.comissao_percentual || '',
             pix_chave: func.pix_chave || ''
         });
         setModalOpen(true);
@@ -76,6 +78,7 @@ export default function Funcionarios() {
                     telefone: formData.telefone,
                     data_admissao: formData.data_admissao || null,
                     salario: formData.salario || null,
+                    comissao_percentual: formData.comissao_percentual || 0,
                     pix_chave: formData.pix_chave
                 })
                 .eq('id', selectedFuncionario.id);
@@ -160,8 +163,8 @@ export default function Funcionarios() {
                                             <span>{func.telefone || 'Sem telefone'}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <Calendar className="w-4 h-4 text-gray-400" />
-                                            <span>Admissão: {func.data_admissao ? new Date(func.data_admissao).toLocaleDateString('pt-BR') : '-'}</span>
+                                            <DollarSign className="w-4 h-4 text-gray-400" />
+                                            <span>Comissão: {func.comissao_percentual || 0}%</span>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -212,7 +215,7 @@ export default function Funcionarios() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-3 gap-4">
                             <Input
                                 label="Data de Admissão"
                                 type="date"
@@ -225,6 +228,13 @@ export default function Funcionarios() {
                                 step="0.01"
                                 value={formData.salario}
                                 onChange={e => setFormData({ ...formData, salario: e.target.value })}
+                            />
+                            <Input
+                                label="Comissão (%)"
+                                type="number"
+                                step="0.1"
+                                value={formData.comissao_percentual}
+                                onChange={e => setFormData({ ...formData, comissao_percentual: e.target.value })}
                             />
                         </div>
 

@@ -1,85 +1,50 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Onboarding from "./pages/Onboarding";
-import Dashboard from "./pages/Dashboard";
-import Pacientes from "./pages/Pacientes";
-import Agendamentos from "./pages/Agendamentos";
-import Prontuarios from "./pages/Prontuarios";
-import Vacinas from "./pages/Vacinas";
-import Estoque from "./pages/Estoque";
-import Financeiro from "./pages/Financeiro";
-import Vendas from "./pages/Vendas";
-import Medicamentos from "./pages/Medicamentos";
-import Receitas from "./pages/Receitas";
-import Internacoes from "./pages/Internacoes";
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { PrivateRoute } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Pacientes from './pages/Pacientes';
+import Agendamentos from './pages/Agendamentos';
+import Prontuarios from './pages/Prontuarios';
+import Financeiro from './pages/Financeiro';
 import Configuracoes from './pages/Configuracoes';
-import Relatorios from './pages/Relatorios';
-import Exames from './pages/Exames';
+import Onboarding from './pages/Onboarding';
+import AgendamentoPublico from './pages/AgendamentoPublico';
+import Internacoes from './pages/Internacoes';
+import Estoque from './pages/Estoque';
+import Vendas from './pages/Vendas';
 import Funcionarios from './pages/Funcionarios';
-import PublicLayout from './components/PublicLayout';
-import PublicScheduling from './pages/PublicScheduling';
-import RoleRoute from './components/RoleRoute';
-
-const PrivateRoute = ({ children }) => {
-  const { user, profile, loading } = useAuth();
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen">Carregando...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  if (!profile) {
-    return <Navigate to="/onboarding" />;
-  }
-
-  return children;
-};
+import Comissoes from './pages/Comissoes';
 
 function App() {
-  // Main App Component
   return (
     <Router>
       <AuthProvider>
         <Routes>
+          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/agendar/:slug" element={<AgendamentoPublico />} />
 
-          {/* Public Routes */}
-          <Route element={<PublicLayout />}>
-            <Route path="/agendar/:slug" element={<PublicScheduling />} />
+          {/* Protected Routes */}
+          <Route element={<PrivateRoute />}>
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/pacientes" element={<Pacientes />} />
+            <Route path="/agendamentos" element={<Agendamentos />} />
+            <Route path="/prontuarios" element={<Prontuarios />} />
+            <Route path="/financeiro" element={<Financeiro />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="/internacoes" element={<Internacoes />} />
+            <Route path="/estoque" element={<Estoque />} />
+            <Route path="/vendas" element={<Vendas />} />
+            <Route path="/funcionarios" element={<Funcionarios />} />
+            <Route path="/comissoes" element={<Comissoes />} />
           </Route>
 
-          {/* Private Routes (Protected by Role) */}
-          <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
-
-          {/* Shared Routes */}
-          <Route path="/agendamentos" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario', 'recepcionista']}><Agendamentos /></RoleRoute></PrivateRoute>} />
-          <Route path="/pacientes" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario', 'recepcionista']}><Pacientes /></RoleRoute></PrivateRoute>} />
-          <Route path="/estoque" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario', 'recepcionista']}><Estoque /></RoleRoute></PrivateRoute>} />
-
-          {/* Veterinarian Routes */}
-          <Route path="/prontuarios" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Prontuarios /></RoleRoute></PrivateRoute>} />
-          <Route path="/vacinas" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Vacinas /></RoleRoute></PrivateRoute>} />
-          <Route path="/medicamentos" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Medicamentos /></RoleRoute></PrivateRoute>} />
-          <Route path="/receitas" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Receitas /></RoleRoute></PrivateRoute>} />
-          <Route path="/internacoes" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Internacoes /></RoleRoute></PrivateRoute>} />
-          <Route path="/exames" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'veterinario']}><Exames /></RoleRoute></PrivateRoute>} />
-
-          {/* Receptionist/Admin Routes */}
-          <Route path="/vendas" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'recepcionista']}><Vendas /></RoleRoute></PrivateRoute>} />
-          <Route path="/financeiro" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'recepcionista']}><Financeiro /></RoleRoute></PrivateRoute>} />
-          <Route path="/relatorios" element={<PrivateRoute><RoleRoute allowedRoles={['admin', 'recepcionista']}><Relatorios /></RoleRoute></PrivateRoute>} />
-
-          {/* Admin Only */}
-          <Route path="/configuracoes" element={<PrivateRoute><RoleRoute allowedRoles={['admin']}><Configuracoes /></RoleRoute></PrivateRoute>} />
-          <Route path="/funcionarios" element={<PrivateRoute><RoleRoute allowedRoles={['admin']}><Funcionarios /></RoleRoute></PrivateRoute>} />
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>
