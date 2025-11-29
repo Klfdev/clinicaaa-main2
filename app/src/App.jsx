@@ -18,6 +18,8 @@ import Internacoes from "./pages/Internacoes";
 import Configuracoes from './pages/Configuracoes';
 import Relatorios from './pages/Relatorios';
 import Exames from './pages/Exames';
+import PublicLayout from './components/PublicLayout';
+import PublicScheduling from './pages/PublicScheduling';
 
 const PrivateRoute = ({ children }) => {
   const { user, profile, loading } = useAuth();
@@ -46,6 +48,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/onboarding" element={<Onboarding />} />
+
+          {/* Public Routes */}
+          <Route element={<PublicLayout />}>
+            <Route path="/agendar/:slug" element={<PublicScheduling />} />
+          </Route>
+
+          {/* Private Routes */}
           <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/pacientes" element={<PrivateRoute><Pacientes /></PrivateRoute>} />
           <Route path="/agendamentos" element={<PrivateRoute><Agendamentos /></PrivateRoute>} />
