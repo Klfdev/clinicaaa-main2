@@ -36,7 +36,7 @@ ChartJS.register(
 );
 
 export default function Dashboard() {
-    const { profile } = useAuth();
+    const { profile, organization } = useAuth();
     const [stats, setStats] = useState({
         pacientes: 0,
         agendamentosHoje: 0,
@@ -384,6 +384,36 @@ export default function Dashboard() {
                         </Button>
                     </div>
                 </div>
+
+                {/* Public Link Card */}
+                <Card className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-none">
+                    <CardContent className="flex flex-col md:flex-row items-center justify-between p-6 gap-4">
+                        <div>
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                                <Calendar className="w-5 h-5" /> Agendamento Online
+                            </h3>
+                            <p className="text-purple-100 text-sm mt-1">
+                                Compartilhe este link com seus clientes para eles agendarem sozinhos.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 bg-white/10 p-2 rounded-lg w-full md:w-auto">
+                            <code className="text-sm font-mono truncate max-w-[200px] md:max-w-[300px]">
+                                {window.location.origin}/agendar/{organization?.slug}
+                            </code>
+                            <Button
+                                size="sm"
+                                variant="secondary"
+                                className="bg-white text-purple-600 hover:bg-gray-100 border-none"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(`${window.location.origin}/agendar/${organization?.slug}`);
+                                    alert('Link copiado!');
+                                }}
+                            >
+                                Copiar
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Widgets Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
