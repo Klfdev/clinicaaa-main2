@@ -35,6 +35,9 @@ export default function Register() {
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    emailRedirectTo: 'https://clinicaaa-main2.vercel.app/'
+                }
             });
 
             if (authError) throw authError;
