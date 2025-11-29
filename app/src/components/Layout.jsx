@@ -97,7 +97,7 @@ export default function Layout({ children }) {
         { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
         { icon: FileText, label: 'Exames', path: '/exames' },
         { icon: PieChart, label: 'Relatórios', path: '/relatorios' },
-        { icon: Users, label: 'Equipe', path: '/equipe' },
+        { icon: Users, label: 'Funcionários', path: '/funcionarios' },
         { icon: Settings, label: 'Configurações', path: '/configuracoes' },
     ];
 

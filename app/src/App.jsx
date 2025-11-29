@@ -18,7 +18,7 @@ import Internacoes from "./pages/Internacoes";
 import Configuracoes from './pages/Configuracoes';
 import Relatorios from './pages/Relatorios';
 import Exames from './pages/Exames';
-import Equipe from './pages/Equipe';
+import Funcionarios from './pages/Funcionarios';
 import PublicLayout from './components/PublicLayout';
 import PublicScheduling from './pages/PublicScheduling';
 import RoleRoute from './components/RoleRoute';
@@ -79,7 +79,7 @@ function App() {
 
           {/* Admin Only */}
           <Route path="/configuracoes" element={<PrivateRoute><RoleRoute allowedRoles={['admin']}><Configuracoes /></RoleRoute></PrivateRoute>} />
-          <Route path="/equipe" element={<PrivateRoute><RoleRoute allowedRoles={['admin']}><Equipe /></RoleRoute></PrivateRoute>} />
+          <Route path="/funcionarios" element={<PrivateRoute><RoleRoute allowedRoles={['admin']}><Funcionarios /></RoleRoute></PrivateRoute>} />
         </Routes>
       </AuthProvider>
     </Router>
