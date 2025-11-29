@@ -47,25 +47,38 @@ export function AuthProvider({ children }) {
 
     const fetchProfile = async (userId) => {
         try {
+            // Try to fetch profile using RPC (bypasses RLS issues)
             const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
+                .rpc('get_user_profile');
 
             if (profileError) {
-                console.log("Profile not found. User needs onboarding.");
+                console.error("Error fetching profile via RPC:", profileError);
+                // Fallback or handle error
+            }
+
+            if (!profileData) {
+                console.log("AuthContext: Profile not found via RPC.");
                 setProfile(null);
                 setOrganization(null);
             } else {
+                console.log("AuthContext: Profile found:", profileData);
                 setProfile(profileData);
+
                 if (profileData.organization_id) {
-                    const { data: orgData } = await supabase
+                    const { data: orgData, error: orgError } = await supabase
                         .from('organizations')
                         .select('*')
                         .eq('id', profileData.organization_id)
                         .single();
-                    setOrganization(orgData);
+
+                    if (orgError) {
+                        console.error("AuthContext: Error fetching org:", orgError);
+                    } else {
+                        console.log("AuthContext: Org found:", orgData);
+                        setOrganization(orgData);
+                    }
+                } else {
+                    console.warn("AuthContext: Profile has no organization_id");
                 }
             }
         } catch (error) {

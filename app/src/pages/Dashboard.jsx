@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -35,6 +36,7 @@ ChartJS.register(
 );
 
 export default function Dashboard() {
+    const { profile } = useAuth();
     const [stats, setStats] = useState({
         pacientes: 0,
         agendamentosHoje: 0,
@@ -367,7 +369,7 @@ export default function Dashboard() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Olá, Doutor(a)! 👋
+                            Olá, {profile?.full_name || 'Doutor(a)'}! 👋
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 mt-1">
                             Aqui está o resumo da sua clínica hoje.

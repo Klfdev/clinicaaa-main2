@@ -25,7 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 
 export default function Layout({ children }) {
-    const { user, logout } = useAuth();
+    const { user, profile, organization, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -100,11 +100,17 @@ export default function Layout({ children }) {
                     {/* Logo */}
                     <div className="p-6 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700">
                         <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
-                            <span className="text-white font-bold text-xl">P</span>
+                            <span className="text-white font-bold text-xl">
+                                {organization?.name?.[0]?.toUpperCase() || 'P'}
+                            </span>
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">PetClínica</h1>
-                            <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">São Lázaro</p>
+                            <h1 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                                {organization?.name || 'PetClínica'}
+                            </h1>
+                            <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">
+                                {organization?.slug || 'Sistema'}
+                            </p>
                         </div>
                         <button onClick={() => setSidebarOpen(false)} className="lg:hidden ml-auto text-gray-500">
                             <X className="w-6 h-6" />
@@ -144,13 +150,15 @@ export default function Layout({ children }) {
                     <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
                         <div className="flex items-center gap-3 mb-4 px-2">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-md">
-                                {user?.email?.[0].toUpperCase() || 'U'}
+                                {profile?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                                    {user?.email?.split('@')[0] || 'Usuário'}
+                                    {profile?.full_name || user?.email?.split('@')[0] || 'Usuário'}
                                 </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">Veterinário</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate capitalize">
+                                    {profile?.role || 'Usuário'}
+                                </p>
                             </div>
                         </div>
                         <button
