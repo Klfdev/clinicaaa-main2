@@ -5,7 +5,8 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
-import { Plus, Activity, HeartPulse, Thermometer, Wind, Utensils, Clock, User, FileText, CheckCircle, XCircle } from 'lucide-react';
+import VitalSignMonitor from '../components/VitalSignMonitor';
+import { Plus, Activity, HeartPulse, Thermometer, Wind, Utensils, Clock, User, FileText, CheckCircle, XCircle, Monitor } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Internacoes() {
@@ -16,6 +17,7 @@ export default function Internacoes() {
     const [evolutionModalOpen, setEvolutionModalOpen] = useState(false);
     const [selectedInternacao, setSelectedInternacao] = useState(null);
     const [evolucoes, setEvolucoes] = useState([]);
+    const [allEvolucoes, setAllEvolucoes] = useState({}); // Map: internacao_id -> [evolucoes]
 
     // Admission Form
     const [formData, setFormData] = useState({
@@ -57,6 +59,30 @@ export default function Internacoes() {
 
             if (intError) throw intError;
             setInternacoes(intData || []);
+
+            // Load Evolutions for Active Internations
+            if (intData && intData.length > 0) {
+                const ids = intData.map(i => i.id);
+                const { data: evoData, error: evoError } = await supabase
+                    .from('evolucoes')
+                    .select('*')
+                    .in('internacao_id', ids)
+                    .order('data_hora', { ascending: false }); // Newest first
+
+                if (evoError) throw evoError;
+
+                // Group by internacao_id
+                const grouped = {};
+                evoData?.forEach(evo => {
+                    if (!grouped[evo.internacao_id]) {
+                        grouped[evo.internacao_id] = [];
+                    }
+                    grouped[evo.internacao_id].push(evo);
+                });
+                setAllEvolucoes(grouped);
+            } else {
+                setAllEvolucoes({});
+            }
 
             // Load Patients for selection
             const { data: pacData } = await supabase
@@ -131,14 +157,10 @@ export default function Internacoes() {
             responsavel: internacao.veterinario_responsavel || ''
         });
 
-        // Load history
-        const { data } = await supabase
-            .from('evolucoes')
-            .select('*')
-            .eq('internacao_id', internacao.id)
-            .order('data_hora', { ascending: false });
+        // Use already fetched data if available, otherwise fetch
+        const existingEvos = allEvolucoes[internacao.id] || [];
+        setEvolucoes(existingEvos);
 
-        setEvolucoes(data || []);
         setEvolutionModalOpen(true);
     };
 
@@ -156,7 +178,10 @@ export default function Internacoes() {
 
             toast.success('Evolução registrada!');
 
-            // Refresh list
+            // Refresh all data to update charts immediately
+            carregarDados();
+
+            // Also update local list for the modal
             const { data } = await supabase
                 .from('evolucoes')
                 .select('*')
@@ -188,51 +213,70 @@ export default function Internacoes() {
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <HeartPulse className="w-8 h-8 text-red-500" /> Internação
+                            <Monitor className="w-8 h-8 text-green-500" /> UTI Digital
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400">Monitoramento de pacientes hospitalizados.</p>
+                        <p className="text-gray-500 dark:text-gray-400">Monitoramento intensivo em tempo real.</p>
                     </div>
-                    <Button onClick={() => setModalOpen(true)} className="bg-red-600 hover:bg-red-700 text-white border-none">
+                    <Button onClick={() => setModalOpen(true)} className="bg-green-600 hover:bg-green-700 text-white border-none shadow-lg shadow-green-500/30">
                         <Plus className="w-5 h-5 mr-2" /> Nova Internação
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
                     {loading ? (
-                        <p className="col-span-full text-center text-gray-500 py-12">Carregando internações...</p>
+                        <p className="col-span-full text-center text-gray-500 py-12">Carregando monitores...</p>
                     ) : internacoes.length === 0 ? (
-                        <div className="col-span-full text-center py-12 bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+                        <div className="col-span-full text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
                             <HeartPulse className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                            <p className="text-gray-500">Nenhum paciente internado no momento.</p>
+                            <p className="text-gray-500">Nenhum paciente na UTI no momento.</p>
                         </div>
                     ) : (
                         internacoes.map((int) => (
-                            <Card key={int.id} className="border-l-4 border-l-red-500">
-                                <div className="p-5 space-y-4">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{int.pacientes?.nome}</h3>
-                                            <p className="text-sm text-gray-500">{int.pacientes?.tutores?.nome}</p>
+                            <Card key={int.id} className="border-none shadow-xl bg-gray-900 text-white overflow-hidden">
+                                {/* Monitor Header */}
+                                <div className="bg-gray-800 p-4 flex justify-between items-center border-b border-gray-700">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-xl">
+                                            🐶
                                         </div>
-                                        <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-xs px-2 py-1 rounded-full font-bold animate-pulse">
-                                            INTERNADO
-                                        </span>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-white">{int.pacientes?.nome}</h3>
+                                            <p className="text-xs text-gray-400">{int.pacientes?.tutores?.nome}</p>
+                                        </div>
                                     </div>
+                                    <div className="text-right">
+                                        <div className="flex items-center gap-2 justify-end">
+                                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                            <span className="text-xs font-mono text-green-400">MONITORANDO</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Entrada: {new Date(int.data_entrada).toLocaleDateString('pt-BR')}
+                                        </p>
+                                    </div>
+                                </div>
 
-                                    <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg text-sm space-y-1">
-                                        <p><span className="font-semibold">Entrada:</span> {new Date(int.data_entrada).toLocaleString('pt-BR')}</p>
-                                        <p><span className="font-semibold">Motivo:</span> {int.motivo}</p>
-                                        <p><span className="font-semibold">Vet:</span> {int.veterinario_responsavel}</p>
-                                    </div>
+                                {/* Vital Signs Component */}
+                                <div className="p-4 bg-black">
+                                    <VitalSignMonitor evolucoes={allEvolucoes[int.id] || []} />
+                                </div>
 
-                                    <div className="flex gap-2 pt-2">
-                                        <Button variant="outline" className="flex-1" onClick={() => openEvolution(int)}>
-                                            <Activity className="w-4 h-4 mr-2" /> Evolução
-                                        </Button>
-                                        <Button variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => handleDischarge(int.id)}>
-                                            <CheckCircle className="w-4 h-4 mr-1" /> Alta
-                                        </Button>
-                                    </div>
+                                {/* Actions Footer */}
+                                <div className="bg-gray-800 p-3 flex gap-2 border-t border-gray-700">
+                                    <Button
+                                        size="sm"
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 border-none text-white"
+                                        onClick={() => openEvolution(int)}
+                                    >
+                                        <Activity className="w-4 h-4 mr-2" /> Lançar Evolução
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
+                                        onClick={() => handleDischarge(int.id)}
+                                    >
+                                        <CheckCircle className="w-4 h-4 mr-2" /> Alta
+                                    </Button>
                                 </div>
                             </Card>
                         ))
@@ -273,7 +317,7 @@ export default function Internacoes() {
                         />
                         <div className="flex justify-end gap-3 mt-6">
                             <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-                            <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white border-none">Confirmar Internação</Button>
+                            <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white border-none">Confirmar Internação</Button>
                         </div>
                     </form>
                 </Modal>
