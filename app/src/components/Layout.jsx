@@ -24,7 +24,7 @@ export default function Layout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
-    const { user, profile, signOut } = useAuth();
+    const { user, profile, logout } = useAuth();
 
     const menuItems = [
         { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['admin', 'veterinario', 'recepcionista'] },
@@ -41,7 +41,7 @@ export default function Layout({ children }) {
     ];
 
     const handleSignOut = async () => {
-        await signOut();
+        await logout();
         navigate('/login');
     };
 
