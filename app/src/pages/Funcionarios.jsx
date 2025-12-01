@@ -35,9 +35,9 @@ export default function Funcionarios() {
         setLoading(true);
         try {
             const { data, error } = await supabase
-                .from('profiles')
+                .from('funcionarios')
                 .select('*')
-                .order('full_name', { ascending: true });
+                .order('nome', { ascending: true });
 
             if (error) throw error;
             setFuncionarios(data || []);
@@ -49,10 +49,27 @@ export default function Funcionarios() {
         }
     };
 
+    const handleNewClick = () => {
+        setSelectedFuncionario(null);
+        setFormData({
+            role: 'recepcionista',
+            nome: '',
+            cargo: '',
+            cpf: '',
+            telefone: '',
+            data_admissao: '',
+            salario: '',
+            comissao_percentual: '',
+            pix_chave: ''
+        });
+        setModalOpen(true);
+    };
+
     const handleEditClick = (func) => {
         setSelectedFuncionario(func);
         setFormData({
-            role: func.role || 'recepcionista',
+            role: 'recepcionista', // Campo legado ou visual, já que acesso é via profiles
+            nome: func.nome,
             cargo: func.cargo || '',
             cpf: func.cpf || '',
             telefone: func.telefone || '',
@@ -64,33 +81,55 @@ export default function Funcionarios() {
         setModalOpen(true);
     };
 
+    const handleDelete = async (id) => {
+        if (window.confirm('Tem certeza que deseja remover este funcionário?')) {
+            try {
+                const { error } = await supabase.from('funcionarios').delete().eq('id', id);
+                if (error) throw error;
+                toast.success('Funcionário removido!');
+                fetchFuncionarios();
+            } catch (error) {
+                console.error("Erro ao deletar:", error);
+                toast.error("Erro ao remover funcionário.");
+            }
+        }
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
-        if (!selectedFuncionario) return;
 
         try {
-            const { error } = await supabase
-                .from('profiles')
-                .update({
-                    role: formData.role,
-                    cargo: formData.cargo,
-                    cpf: formData.cpf,
-                    telefone: formData.telefone,
-                    data_admissao: formData.data_admissao || null,
-                    salario: formData.salario || null,
-                    comissao_percentual: formData.comissao_percentual || 0,
-                    pix_chave: formData.pix_chave
-                })
-                .eq('id', selectedFuncionario.id);
+            const payload = {
+                nome: formData.nome,
+                cargo: formData.cargo,
+                cpf: formData.cpf,
+                telefone: formData.telefone,
+                data_admissao: formData.data_admissao || null,
+                salario: formData.salario ? parseFloat(formData.salario) : null,
+                comissao_percentual: formData.comissao_percentual ? parseFloat(formData.comissao_percentual) : 0,
+                pix_chave: formData.pix_chave
+            };
 
-            if (error) throw error;
+            if (selectedFuncionario) {
+                const { error } = await supabase
+                    .from('funcionarios')
+                    .update(payload)
+                    .eq('id', selectedFuncionario.id);
+                if (error) throw error;
+                toast.success('Funcionário atualizado!');
+            } else {
+                const { error } = await supabase
+                    .from('funcionarios')
+                    .insert([payload]);
+                if (error) throw error;
+                toast.success('Funcionário cadastrado!');
+            }
 
-            toast.success('Dados atualizados com sucesso!');
             setModalOpen(false);
             fetchFuncionarios();
         } catch (error) {
             console.error("Erro ao salvar:", error);
-            toast.error("Erro ao atualizar funcionário.");
+            toast.error("Erro ao salvar dados.");
         }
     };
 
@@ -110,6 +149,9 @@ export default function Funcionarios() {
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400">Administre cargos, salários e permissões da sua equipe.</p>
                     </div>
+                    <Button onClick={handleNewClick}>
+                        <Users className="w-5 h-5 mr-2" /> Novo Funcionário
+                    </Button>
                 </div>
 
                 {/* Search */}
@@ -137,34 +179,37 @@ export default function Funcionarios() {
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                                {func.full_name?.[0]?.toUpperCase() || '?'}
+                                                {func.nome?.[0]?.toUpperCase() || '?'}
                                             </div>
                                             <div>
-                                                <h3 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px]" title={func.full_name}>
-                                                    {func.full_name || 'Sem Nome'}
+                                                <h3 className="font-bold text-gray-900 dark:text-white truncate max-w-[150px]" title={func.nome}>
+                                                    {func.nome || 'Sem Nome'}
                                                 </h3>
                                                 <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">{func.cargo || 'Sem Cargo'}</p>
                                             </div>
                                         </div>
-                                        <Button size="sm" variant="ghost" onClick={() => handleEditClick(func)}>
-                                            <Edit2 className="w-4 h-4 text-gray-500" />
-                                        </Button>
+                                        <div className="flex gap-1">
+                                            <Button size="sm" variant="ghost" onClick={() => handleEditClick(func)}>
+                                                <Edit2 className="w-4 h-4 text-gray-500" />
+                                            </Button>
+                                            <Button size="sm" variant="ghost" onClick={() => handleDelete(func.id)}>
+                                                <Trash2 className="w-4 h-4 text-red-500" />
+                                            </Button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                                        <div className="flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-gray-400" />
-                                            <span className="capitalize bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-xs">
-                                                Acesso: {func.role}
-                                            </span>
-                                        </div>
                                         <div className="flex items-center gap-2">
                                             <Phone className="w-4 h-4 text-gray-400" />
                                             <span>{func.telefone || 'Sem telefone'}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            <CreditCard className="w-4 h-4 text-gray-400" />
+                                            <span>CPF: {func.cpf || '-'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
                                             <DollarSign className="w-4 h-4 text-gray-400" />
-                                            <span>Comissão: {func.comissao_percentual || 0}%</span>
+                                            <span>Salário: R$ {func.salario ? func.salario.toFixed(2) : '-'}</span>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -177,51 +222,46 @@ export default function Funcionarios() {
                 <Modal
                     isOpen={modalOpen}
                     onClose={() => setModalOpen(false)}
-                    title={`Editar: ${selectedFuncionario?.full_name || 'Funcionário'}`}
+                    title={selectedFuncionario ? `Editar: ${selectedFuncionario.nome}` : 'Novo Funcionário'}
                 >
                     <form onSubmit={handleSave} className="space-y-4">
+                        <Input
+                            label="Nome Completo *"
+                            value={formData.nome}
+                            onChange={e => setFormData({ ...formData, nome: e.target.value })}
+                            required
+                        />
+
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nível de Acesso</label>
-                                <select
-                                    value={formData.role}
-                                    onChange={e => setFormData({ ...formData, role: e.target.value })}
-                                    className="flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 outline-none"
-                                >
-                                    <option value="admin">Admin</option>
-                                    <option value="veterinario">Veterinário</option>
-                                    <option value="recepcionista">Recepcionista</option>
-                                </select>
-                            </div>
                             <Input
                                 label="Cargo (Ex: Gerente)"
                                 value={formData.cargo}
                                 onChange={e => setFormData({ ...formData, cargo: e.target.value })}
                             />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
                             <Input
                                 label="CPF"
                                 value={formData.cpf}
                                 onChange={e => setFormData({ ...formData, cpf: e.target.value })}
                                 placeholder="000.000.000-00"
                             />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                             <Input
                                 label="Telefone"
                                 value={formData.telefone}
                                 onChange={e => setFormData({ ...formData, telefone: e.target.value })}
                                 placeholder="(00) 00000-0000"
                             />
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
                             <Input
                                 label="Data de Admissão"
                                 type="date"
                                 value={formData.data_admissao}
                                 onChange={e => setFormData({ ...formData, data_admissao: e.target.value })}
                             />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                             <Input
                                 label="Salário (R$)"
                                 type="number"
@@ -247,7 +287,7 @@ export default function Funcionarios() {
 
                         <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
                             <Button type="button" variant="ghost" onClick={() => setModalOpen(false)}>Cancelar</Button>
-                            <Button type="submit">Salvar Alterações</Button>
+                            <Button type="submit">Salvar</Button>
                         </div>
                     </form>
                 </Modal>
