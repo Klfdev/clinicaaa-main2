@@ -131,6 +131,21 @@ export default function Financeiro() {
         }
     };
 
+    const closeModal = () => {
+        setModalOpen(false);
+        setEditingId(null);
+    };
+
+    const gerarRelatorioPDF = () => {
+        try {
+            pdfService.generateFinancialReport(lancamentos, resumo, config);
+            toast.success("Relatório gerado com sucesso!");
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            toast.error("Erro ao gerar relatório PDF.");
+        }
+    };
+
     const openModal = (item = null) => {
         if (item) {
             setEditingId(item.id);
