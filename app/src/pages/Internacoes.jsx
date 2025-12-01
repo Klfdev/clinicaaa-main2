@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 import Layout from '../components/Layout';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -9,12 +10,21 @@ import VitalSignMonitor from '../components/VitalSignMonitor';
 import { Plus, Activity, HeartPulse, Thermometer, Wind, Utensils, Clock, User, FileText, CheckCircle, XCircle, Monitor } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
+import { pdfService } from '../lib/pdfService'; // Import pdfService
+
 export default function Internacoes() {
+    const { organization } = useAuth(); // Get organization for PDF config
     const [internacoes, setInternacoes] = useState([]);
     const [pacientes, setPacientes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [evolutionModalOpen, setEvolutionModalOpen] = useState(false);
+
+    // Discharge Modal State
+    const [dischargeModalOpen, setDischargeModalOpen] = useState(false);
+    const [selectedForDischarge, setSelectedForDischarge] = useState(null);
+    const [generatePdf, setGeneratePdf] = useState(true);
+
     const [selectedInternacao, setSelectedInternacao] = useState(null);
     const [evolucoes, setEvolucoes] = useState([]);
     const [allEvolucoes, setAllEvolucoes] = useState({}); // Map: internacao_id -> [evolucoes]
@@ -126,22 +136,76 @@ export default function Internacoes() {
         }
     };
 
-    const handleDischarge = async (id) => {
-        if (window.confirm('Confirmar alta do paciente?')) {
-            try {
-                const { error } = await supabase
-                    .from('internacoes')
-                    .update({ status: 'Alta', data_alta: new Date().toISOString() })
-                    .eq('id', id);
+    const handleDischargeClick = (internacao) => {
+        setSelectedForDischarge(internacao);
+        setGeneratePdf(true); // Default to true
+        setDischargeModalOpen(true);
+    };
 
-                if (error) throw error;
+    const confirmDischarge = async () => {
+        if (!selectedForDischarge) return;
 
-                toast.success('Alta registrada!');
-                carregarDados();
-            } catch (error) {
-                console.error("Erro na alta:", error);
-                toast.error('Erro ao dar alta.');
+        try {
+            // 1. Generate PDF if requested
+            if (generatePdf) {
+                const history = allEvolucoes[selectedForDischarge.id] || [];
+
+                // Prepare content for PDF
+                const content = [
+                    {
+                        type: 'info',
+                        data: {
+                            'Paciente': selectedForDischarge.pacientes?.nome,
+                            'Tutor': selectedForDischarge.pacientes?.tutores?.nome,
+                            'Data Entrada': new Date(selectedForDischarge.data_entrada).toLocaleDateString('pt-BR'),
+                            'Data Alta': new Date().toLocaleDateString('pt-BR'),
+                            'Motivo': selectedForDischarge.motivo
+                        }
+                    },
+                    {
+                        type: 'section',
+                        title: 'Histórico de Evoluções'
+                    },
+                    {
+                        type: 'table',
+                        head: ['Data/Hora', 'Temp', 'FC', 'FR', 'Obs', 'Resp.'],
+                        body: history.map(h => [
+                            new Date(h.data_hora).toLocaleString('pt-BR'),
+                            h.temperatura || '-',
+                            h.frequencia_cardiaca || '-',
+                            h.frequencia_respiratoria || '-',
+                            h.observacoes || '-',
+                            h.responsavel || '-'
+                        ])
+                    }
+                ];
+
+                await pdfService.generate({
+                    title: 'Relatório de Alta / Histórico de Internação',
+                    config: organization,
+                    content: content,
+                    fileName: `Alta_${selectedForDischarge.pacientes?.nome}_${new Date().toISOString().split('T')[0]}.pdf`
+                });
+
+                toast.success("PDF gerado com sucesso!");
             }
+
+            // 2. Update Status in DB
+            const { error } = await supabase
+                .from('internacoes')
+                .update({ status: 'Alta', data_alta: new Date().toISOString() })
+                .eq('id', selectedForDischarge.id);
+
+            if (error) throw error;
+
+            toast.success('Alta registrada!');
+            setDischargeModalOpen(false);
+            setSelectedForDischarge(null);
+            carregarDados();
+
+        } catch (error) {
+            console.error("Erro na alta:", error);
+            toast.error('Erro ao processar alta.');
         }
     };
 
@@ -273,7 +337,7 @@ export default function Internacoes() {
                                         size="sm"
                                         variant="outline"
                                         className="border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white"
-                                        onClick={() => handleDischarge(int.id)}
+                                        onClick={() => handleDischargeClick(int)}
                                     >
                                         <CheckCircle className="w-4 h-4 mr-2" /> Alta
                                     </Button>
@@ -410,6 +474,45 @@ export default function Internacoes() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </div>
+                </Modal>
+
+                {/* Discharge Confirmation Modal */}
+                <Modal
+                    isOpen={dischargeModalOpen}
+                    onClose={() => setDischargeModalOpen(false)}
+                    title="Confirmar Alta"
+                >
+                    <div className="space-y-4">
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                            <h4 className="font-bold text-yellow-800 dark:text-yellow-200 mb-1">Atenção</h4>
+                            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                                Você está prestes a dar alta para <strong>{selectedForDischarge?.pacientes?.nome}</strong>.
+                                O monitoramento será encerrado.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onClick={() => setGeneratePdf(!generatePdf)}>
+                            <input
+                                type="checkbox"
+                                checked={generatePdf}
+                                onChange={(e) => setGeneratePdf(e.target.checked)}
+                                className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                            />
+                            <div className="flex-1">
+                                <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                                    <FileText className="w-4 h-4" /> Gerar Relatório de Alta
+                                </p>
+                                <p className="text-xs text-gray-500">Baixar PDF com histórico completo de evoluções.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3 mt-4">
+                            <Button variant="ghost" onClick={() => setDischargeModalOpen(false)}>Cancelar</Button>
+                            <Button onClick={confirmDischarge} className="bg-green-600 hover:bg-green-700 text-white border-none">
+                                Confirmar Alta
+                            </Button>
                         </div>
                     </div>
                 </Modal>
