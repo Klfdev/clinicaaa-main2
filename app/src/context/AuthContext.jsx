@@ -89,7 +89,12 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const login = async (email, password) => {
+    const login = async (email, password, remember = true) => {
+        // Set persistence based on "Remember Me"
+        // 'local' = persists on browser close (default)
+        // 'session' = clears on browser close
+        await supabase.auth.setPersistence(remember ? 'local' : 'session');
+
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
             password,
