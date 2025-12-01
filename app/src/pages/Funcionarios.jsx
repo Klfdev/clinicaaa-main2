@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
-import { Users, Briefcase, DollarSign, Calendar, Phone, CreditCard, Edit2, Search } from 'lucide-react';
+import { Users, Briefcase, DollarSign, Calendar, Phone, CreditCard, Edit2, Search, Trash2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Funcionarios() {
