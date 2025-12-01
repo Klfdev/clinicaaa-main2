@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
@@ -129,4 +130,14 @@ export function AuthProvider({ children }) {
             {!loading && children}
         </AuthContext.Provider>
     );
+}
+
+export function PrivateRoute() {
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    }
+
+    return user ? <Outlet /> : <Navigate to="/login" />;
 }
