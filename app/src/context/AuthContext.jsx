@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
@@ -133,11 +133,21 @@ export function AuthProvider({ children }) {
 }
 
 export function PrivateRoute() {
-    const { user, loading } = useAuth();
+    const { user, profile, loading } = useAuth();
+    const location = useLocation();
 
     if (loading) {
         return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
     }
 
-    return user ? <Outlet /> : <Navigate to="/login" />;
+    if (!user) {
+        return <Navigate to="/login" replace />;
+    }
+
+    // Se o usuário está logado mas não tem perfil, e não está na página de onboarding, redireciona
+    if (!profile && location.pathname !== '/onboarding') {
+        return <Navigate to="/onboarding" replace />;
+    }
+
+    return <Outlet />;
 }
