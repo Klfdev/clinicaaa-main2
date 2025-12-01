@@ -7,8 +7,7 @@ import Card, { CardContent } from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import { Plus, Trash2, ShoppingCart, FileText, Search, X, Download, Eye, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { pdfService } from '../lib/pdfService';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Vendas() {
@@ -28,6 +27,7 @@ export default function Vendas() {
     const [quantidadeInput, setQuantidadeInput] = useState(1);
     const [filtroProduto, setFiltroProduto] = useState('');
     const [filtroVendas, setFiltroVendas] = useState('');
+    const [config, setConfig] = useState(null);
 
     useEffect(() => {
         carregarDados();
@@ -64,6 +64,9 @@ export default function Vendas() {
                 .select('id, full_name')
                 .order('full_name');
             setVendedores(profilesData || []);
+
+            const { data: configData } = await supabase.from('configuracoes').select('*').limit(1).single();
+            setConfig(configData);
 
         } catch (error) {
             console.error("Erro ao carregar dados:", error);
@@ -114,6 +117,21 @@ export default function Vendas() {
 
             if (vendaError) throw vendaError;
 
+            // 1.1. Add to Financeiro (Auto-entry)
+            const totalVenda = carrinho.reduce((acc, item) => acc + (item.quantidade * item.preco), 0);
+            const { error: finError } = await supabase
+                .from('financeiro')
+                .insert([{
+                    tipo: 'entrada',
+                    categoria: 'Vendas',
+                    descricao: `Venda para ${cliente}`,
+                    valor: totalVenda,
+                    data: new Date().toISOString().split('T')[0],
+                    organization_id: (await supabase.auth.getUser()).data.user ? undefined : undefined // Trigger handles this, but good to keep in mind
+                }]);
+
+            if (finError) console.error("Erro ao lançar no financeiro:", finError); // Log but don't stop flow
+
             // 2. Update Inventory (Sequentially for simplicity, could be RPC for atomicity)
             for (const item of carrinho) {
                 if (item.tipo === 'Produto') {
@@ -147,114 +165,59 @@ export default function Vendas() {
     };
 
     // PDF Functions
-    const gerarComprovante = (venda) => {
-        const doc = new jsPDF();
+    const gerarComprovante = async (venda) => {
         const total = venda.itens.reduce((acc, item) => acc + (item.quantidade * item.preco), 0);
         const data = new Date(venda.data_venda).toLocaleDateString('pt-BR');
         const hora = new Date(venda.data_venda).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-        // Header Background
-        doc.setFillColor(139, 92, 246); // Purple-600
-        doc.rect(0, 0, 210, 40, 'F');
-
-        // Header Text
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        doc.setFont("helvetica", "bold");
-        doc.text("CLÍNICA VETERINÁRIA", 105, 20, { align: 'center' });
-
-        doc.setFontSize(14);
-        doc.setFont("helvetica", "normal");
-        doc.text("Comprovante de Venda e Serviços", 105, 30, { align: 'center' });
-
-        // Info Section
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-
-        // Left Column
-        doc.setFont("helvetica", "bold");
-        doc.text("Cliente:", 20, 55);
-        doc.setFont("helvetica", "normal");
-        doc.text(venda.cliente_nome, 40, 55);
-
-        doc.setFont("helvetica", "bold");
-        doc.text("Data:", 20, 62);
-        doc.setFont("helvetica", "normal");
-        doc.text(`${data} às ${hora}`, 40, 62);
-
-        // Right Column
-        doc.setFont("helvetica", "bold");
-        doc.text("Pagamento:", 120, 55);
-        doc.setFont("helvetica", "normal");
-        doc.text(venda.forma_pagamento.toUpperCase().replace('_', ' '), 145, 55);
-
-        doc.setFont("helvetica", "bold");
-        doc.text("ID Venda:", 120, 62);
-        doc.setFont("helvetica", "normal");
-        doc.text(`#${venda.id.toString().slice(0, 8)}`, 145, 62);
+        // Prepare info data
+        const infoData = {
+            'Cliente': venda.cliente_nome,
+            'Data': `${data} às ${hora}`,
+            'Pagamento': venda.forma_pagamento.toUpperCase().replace('_', ' '),
+            'ID Venda': `#${venda.id.toString().slice(0, 8)}`
+        };
 
         if (venda.profiles?.full_name) {
-            doc.setFont("helvetica", "bold");
-            doc.text("Vendedor:", 120, 69);
-            doc.setFont("helvetica", "normal");
-            doc.text(venda.profiles.full_name, 145, 69);
+            infoData['Vendedor'] = venda.profiles.full_name;
         }
 
-        // Table
-        const body = venda.itens.map(item => [
-            item.nome,
-            item.tipo,
-            `R$ ${item.preco.toFixed(2)}`,
-            item.quantidade,
-            `R$ ${(item.preco * item.quantidade).toFixed(2)}`
-        ]);
-
-        autoTable(doc, {
-            startY: 80,
-            head: [['Item / Serviço', 'Tipo', 'Valor Unit.', 'Qtd', 'Subtotal']],
-            body: body,
-            theme: 'striped',
-            headStyles: {
-                fillColor: [139, 92, 246],
-                fontSize: 11,
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            columnStyles: {
-                0: { cellWidth: 80 }, // Item name
-                1: { cellWidth: 30, halign: 'center' }, // Type
-                2: { halign: 'right' }, // Price
-                3: { halign: 'center' }, // Qty
-                4: { halign: 'right', fontStyle: 'bold' } // Subtotal
-            },
-            styles: {
-                fontSize: 10,
-                cellPadding: 3
-            },
-            foot: [['', '', '', 'TOTAL', `R$ ${total.toFixed(2)}`]],
-            footStyles: {
-                fillColor: [243, 244, 246], // Gray-100
-                textColor: [0, 0, 0],
-                fontStyle: 'bold',
-                halign: 'right'
-            }
-        });
-
-        // Footer
-        const finalY = doc.lastAutoTable.finalY + 20;
-
-        doc.setDrawColor(200, 200, 200);
-        doc.line(20, finalY, 190, finalY); // Signature line
-
-        doc.setFontSize(8);
-        doc.setTextColor(100, 100, 100);
-        doc.text("Assinatura do Responsável", 105, finalY + 5, { align: 'center' });
-
-        doc.setFontSize(10);
-        doc.setTextColor(139, 92, 246);
-        doc.text("Obrigado pela preferência!", 105, finalY + 20, { align: 'center' });
-
-        doc.save(`comprovante_${venda.cliente_nome.replace(/\s+/g, '_').toLowerCase()}_${data.replace(/\//g, '-')}.pdf`);
+        try {
+            await pdfService.generate({
+                title: 'Comprovante de Venda',
+                config: { ...config, cor_primaria: '#8b5cf6' }, // Force purple for sales or use config
+                fileName: `comprovante_${venda.cliente_nome.replace(/\s+/g, '_').toLowerCase()}_${data.replace(/\//g, '-')}.pdf`,
+                content: [
+                    {
+                        type: 'info',
+                        data: infoData
+                    },
+                    {
+                        type: 'table',
+                        head: ['Item / Serviço', 'Tipo', 'Valor Unit.', 'Qtd', 'Subtotal'],
+                        body: venda.itens.map(item => [
+                            item.nome,
+                            item.tipo,
+                            `R$ ${item.preco.toFixed(2)}`,
+                            item.quantidade,
+                            `R$ ${(item.preco * item.quantidade).toFixed(2)}`
+                        ])
+                    },
+                    {
+                        type: 'text',
+                        value: `TOTAL: R$ ${total.toFixed(2)}`
+                    },
+                    {
+                        type: 'text',
+                        value: "Obrigado pela preferência!"
+                    }
+                ]
+            });
+            toast.success('Comprovante gerado com sucesso!');
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            toast.error("Erro ao gerar PDF.");
+        }
     };
 
     const vendasFiltradas = vendas.filter(v =>

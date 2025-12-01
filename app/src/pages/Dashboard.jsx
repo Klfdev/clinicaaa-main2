@@ -150,12 +150,15 @@ export default function Dashboard() {
                     novosClientes: novosClientesCount
                 });
 
-                // 6. Chart Data: Appointments (Last 7 Days)
+                const sevenDaysFromNow = new Date();
+                sevenDaysFromNow.setDate(today.getDate() + 7);
+
+                // 6. Chart Data: Appointments (Last 7 Days + Next 7 Days)
                 const { data: weeklyAppointments } = await supabase
                     .from('agendamentos')
                     .select('data, horario, "nomePet", servico')
                     .gte('data', sevenDaysAgo.toISOString().split('T')[0])
-                    .lte('data', todayStr)
+                    .lte('data', sevenDaysFromNow.toISOString().split('T')[0])
                     .order('data', { ascending: false })
                     .order('horario', { ascending: true });
 
@@ -283,8 +286,6 @@ export default function Dashboard() {
                 });
 
                 // 10.2 Vaccines (Next 7 days)
-                const sevenDaysFromNow = new Date();
-                sevenDaysFromNow.setDate(today.getDate() + 7);
                 const sevenDaysFromNowStr = sevenDaysFromNow.toISOString().split('T')[0];
 
                 const { data: upcomingVaccines } = await supabase

@@ -6,8 +6,7 @@ import Input from '../components/ui/Input';
 import Card, { CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import { Plus, Trash2, FileText, Upload, Download, X, Paperclip, File, Activity, Syringe, Calendar, Clock } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { pdfService } from '../lib/pdfService';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Prontuarios() {
@@ -193,91 +192,49 @@ export default function Prontuarios() {
         }
     };
 
-    const gerarPDF = (prontuario) => {
+    const gerarPDF = async (prontuario) => {
         try {
-            const doc = new jsPDF();
-            const clinicName = config?.nome_clinica || "PetClínica São Lázaro";
-            const clinicAddress = config?.endereco || "Rua Exemplo, 123 - Cidade/UF";
-            const clinicPhone = config?.telefone || "(00) 0000-0000";
-            const primaryColor = config?.cor_primaria || "#8b5cf6";
-
-            // Header
-            doc.setFillColor(primaryColor);
-            doc.rect(0, 0, 210, 40, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(22);
-            doc.text(clinicName, 105, 20, { align: 'center' });
-            doc.setFontSize(16);
-            doc.text("Prontuário Médico Veterinário", 105, 32, { align: 'center' });
-
-            // Patient Info Table
-            autoTable(doc, {
-                startY: 50,
-                head: [['Paciente', 'Tutor', 'Data', 'Tipo']],
-                body: [[
-                    prontuario.nome_pet || prontuario.nomePet,
-                    'Consultar Cadastro',
-                    new Date(prontuario.data).toLocaleDateString('pt-BR'),
-                    prontuario.tipo_atendimento
-                ]],
-                theme: 'plain',
-                styles: { fontSize: 12, cellPadding: 2 },
-                headStyles: { fontStyle: 'bold' }
+            await pdfService.generate({
+                title: 'Prontuário Médico',
+                config: config,
+                fileName: `prontuario_${prontuario.nome_pet || 'documento'}.pdf`,
+                content: [
+                    {
+                        type: 'info',
+                        data: {
+                            'Paciente': prontuario.nome_pet || prontuario.nomePet,
+                            'Data': new Date(prontuario.data).toLocaleDateString('pt-BR'),
+                            'Tipo': prontuario.tipo_atendimento,
+                            'ID': prontuario.id.slice(0, 8).toUpperCase()
+                        }
+                    },
+                    {
+                        type: 'section',
+                        title: 'Diagnóstico'
+                    },
+                    {
+                        type: 'text',
+                        value: prontuario.diagnostico
+                    },
+                    prontuario.tratamento ? {
+                        type: 'section',
+                        title: 'Tratamento Prescrito'
+                    } : null,
+                    prontuario.tratamento ? {
+                        type: 'text',
+                        value: prontuario.tratamento
+                    } : null,
+                    prontuario.observacoes ? {
+                        type: 'section',
+                        title: 'Observações'
+                    } : null,
+                    prontuario.observacoes ? {
+                        type: 'text',
+                        value: prontuario.observacoes
+                    } : null
+                ].filter(Boolean)
             });
-
-            let y = doc.lastAutoTable.finalY + 10;
-
-            // Diagnosis
-            if (prontuario.diagnostico) {
-                autoTable(doc, {
-                    startY: y,
-                    head: [['Diagnóstico']],
-                    body: [[prontuario.diagnostico]],
-                    theme: 'grid',
-                    headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
-                    styles: { fontSize: 11, cellPadding: 4 }
-                });
-                y = doc.lastAutoTable.finalY + 10;
-            }
-
-            // Treatment
-            if (prontuario.tratamento) {
-                autoTable(doc, {
-                    startY: y,
-                    head: [['Tratamento Prescrito']],
-                    body: [[prontuario.tratamento]],
-                    theme: 'grid',
-                    headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
-                    styles: { fontSize: 11, cellPadding: 4 }
-                });
-                y = doc.lastAutoTable.finalY + 10;
-            }
-
-            // Observations
-            if (prontuario.observacoes) {
-                autoTable(doc, {
-                    startY: y,
-                    head: [['Observações']],
-                    body: [[prontuario.observacoes]],
-                    theme: 'grid',
-                    headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
-                    styles: { fontSize: 11, cellPadding: 4 }
-                });
-                y = doc.lastAutoTable.finalY + 10;
-            }
-
-            // Footer
-            const finalY = Math.max(y + 20, 250);
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            doc.text("_________________________________", 105, finalY, { align: 'center' });
-            doc.text("Assinatura do Veterinário", 105, finalY + 5, { align: 'center' });
-
-            doc.setFontSize(9);
-            doc.setTextColor(100);
-            doc.text(`${clinicAddress} • ${clinicPhone}`, 105, 285, { align: 'center' });
-
-            doc.save(`prontuario_${prontuario.nome_pet || 'documento'}.pdf`);
+            toast.success('PDF gerado com sucesso!');
         } catch (error) {
             console.error("Erro ao gerar PDF:", error);
             toast.error("Erro ao gerar PDF.");

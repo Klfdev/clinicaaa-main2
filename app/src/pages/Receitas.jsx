@@ -5,8 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
 import { Search, Plus, Trash2, FileText, Printer, Download, Pill } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { pdfService } from '../lib/pdfService';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function Receitas() {
@@ -95,66 +94,35 @@ export default function Receitas() {
         setSelectedMeds(newMeds);
     };
 
-    const gerarPDF = () => {
+    const gerarPDF = async () => {
         try {
-            const doc = new jsPDF();
-            const clinicName = config?.nome_clinica || "PetClínica São Lázaro";
-            const clinicAddress = config?.endereco || "Rua Exemplo, 123 - Cidade/UF";
-            const clinicPhone = config?.telefone || "(00) 0000-0000";
-            const primaryColor = config?.cor_primaria || "#8b5cf6";
-
-            // Header
-            doc.setFillColor(primaryColor);
-            doc.rect(0, 0, 210, 40, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(22);
-            doc.text(clinicName, 105, 20, { align: 'center' });
-            doc.setFontSize(16);
-            doc.text("Receituário Médico Veterinário", 105, 32, { align: 'center' });
-
-            // Patient Info
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(12);
-            doc.text(`Paciente: ${selectedPatient.nome}`, 14, 56);
-            doc.text(`Tutor: ${selectedPatient.tutores?.nome}`, 14, 62);
-            doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 150, 56);
-
-            // Table
-            const tableBody = selectedMeds.map((med, index) => [
-                index + 1,
-                med.nome,
-                med.concentracao || '-',
-                med.qtd,
-                med.instrucoes
-            ]);
-
-            autoTable(doc, {
-                startY: 70,
-                head: [['#', 'Medicamento', 'Concentração', 'Qtd', 'Instruções']],
-                body: tableBody,
-                theme: 'grid',
-                headStyles: { fillColor: primaryColor },
-                styles: { fontSize: 10, cellPadding: 3 },
-                columnStyles: {
-                    0: { cellWidth: 10 },
-                    1: { cellWidth: 40 },
-                    2: { cellWidth: 30 },
-                    3: { cellWidth: 15 },
-                    4: { cellWidth: 'auto' }
-                }
+            await pdfService.generate({
+                title: 'Receituário Médico Veterinário',
+                config: config,
+                fileName: `receita_${selectedPatient.nome}.pdf`,
+                content: [
+                    {
+                        type: 'info',
+                        data: {
+                            'Paciente': selectedPatient.nome,
+                            'Tutor': selectedPatient.tutores?.nome,
+                            'Data': new Date().toLocaleDateString('pt-BR')
+                        }
+                    },
+                    {
+                        type: 'table',
+                        head: ['#', 'Medicamento', 'Concentração', 'Qtd', 'Instruções'],
+                        body: selectedMeds.map((med, index) => [
+                            index + 1,
+                            med.nome,
+                            med.concentracao || '-',
+                            med.qtd,
+                            med.instrucoes
+                        ])
+                    }
+                ]
             });
-
-            // Footer
-            const finalY = doc.lastAutoTable.finalY + 30;
-            doc.setFontSize(10);
-            doc.text("_________________________________", 105, finalY, { align: 'center' });
-            doc.text("Assinatura do Veterinário", 105, finalY + 5, { align: 'center' });
-
-            doc.setFontSize(9);
-            doc.setTextColor(100);
-            doc.text(`${clinicAddress} • ${clinicPhone}`, 105, 285, { align: 'center' });
-
-            doc.save(`receita_${selectedPatient.nome}.pdf`);
+            toast.success('Receita gerada com sucesso!');
         } catch (error) {
             console.error("Erro ao gerar PDF:", error);
             toast.error("Erro ao gerar PDF.");

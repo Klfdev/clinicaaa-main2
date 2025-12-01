@@ -7,8 +7,7 @@ import Card from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
 import { Plus, Trash2, Edit2, Syringe, Search, Clock, Printer, FileText, Phone, AlertTriangle, CheckCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { pdfService } from '../lib/pdfService';
 
 export default function Vacinas() {
     const [vacinas, setVacinas] = useState([]);
@@ -159,60 +158,37 @@ export default function Vacinas() {
         const petVacinas = vacinas.filter(v => v.nome_pet === petName).sort((a, b) => new Date(a.data_aplicacao) - new Date(b.data_aplicacao));
         if (petVacinas.length === 0) return toast.error("Nenhuma vacina encontrada para este pet.");
 
-        const doc = new jsPDF();
-        const clinicName = config?.nome_clinica || "PetClínica São Lázaro";
-        const clinicAddress = config?.endereco || "Rua Exemplo, 123 - Cidade/UF";
-        const primaryColor = config?.cor_primaria || "#16a34a";
-
         try {
-            // Header Background
-            doc.setFillColor(primaryColor);
-            doc.rect(0, 0, 210, 50, 'F');
-
-            // Title
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(24);
-            doc.text("Carteira de Vacinação", 105, 25, { align: 'center' });
-
-            doc.setFontSize(14);
-            doc.text(clinicName, 105, 35, { align: 'center' });
-
-            // Pet Name
-            doc.setFontSize(18);
-            doc.setTextColor(0, 0, 0);
-            doc.text(`Paciente: ${petName}`, 105, 65, { align: 'center' });
-
-            // Table
-            const tableBody = petVacinas.map(v => [
-                new Date(v.data_aplicacao).toLocaleDateString('pt-BR'),
-                v.nome_vacina,
-                v.lote || '-',
-                v.data_revacina ? new Date(v.data_revacina).toLocaleDateString('pt-BR') : '-'
-            ]);
-
-            doc.autoTable({
-                startY: 75,
-                head: [['Data', 'Vacina', 'Lote', 'Revacina']],
-                body: tableBody,
-                theme: 'grid',
-                headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
-                styles: { fontSize: 12, cellPadding: 3 },
-                columnStyles: {
-                    0: { cellWidth: 35 },
-                    1: { cellWidth: 'auto' },
-                    2: { cellWidth: 30 },
-                    3: { cellWidth: 35 }
-                }
+            await pdfService.generate({
+                title: 'Carteira de Vacinação',
+                config: config,
+                fileName: `carteirinha_${petName}.pdf`,
+                content: [
+                    {
+                        type: 'info',
+                        data: {
+                            'Paciente': petName,
+                            'Clínica': config?.nome_clinica || "PetClínica",
+                            'Emissão': new Date().toLocaleDateString('pt-BR')
+                        }
+                    },
+                    {
+                        type: 'table',
+                        head: ['Data', 'Vacina', 'Lote', 'Revacina'],
+                        body: petVacinas.map(v => [
+                            new Date(v.data_aplicacao).toLocaleDateString('pt-BR'),
+                            v.nome_vacina,
+                            v.lote || '-',
+                            v.data_revacina ? new Date(v.data_revacina).toLocaleDateString('pt-BR') : '-'
+                        ])
+                    },
+                    {
+                        type: 'text',
+                        value: "Mantenha esta carteirinha sempre atualizada."
+                    }
+                ]
             });
-
-            // Footer
-            const finalY = doc.lastAutoTable.finalY + 20;
-            doc.setFontSize(10);
-            doc.setTextColor(100);
-            doc.text(`${clinicAddress}`, 105, 280, { align: 'center' });
-            doc.text("Mantenha esta carteirinha sempre atualizada.", 105, 285, { align: 'center' });
-
-            doc.save(`carteirinha_${petName}.pdf`);
+            toast.success('Carteirinha gerada com sucesso!');
         } catch (error) {
             console.error("Erro ao gerar PDF:", error);
             toast.error("Erro ao gerar PDF.");

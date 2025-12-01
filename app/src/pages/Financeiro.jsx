@@ -8,8 +8,7 @@ import Modal from '../components/ui/Modal';
 import { Plus, Trash2, Edit2, DollarSign, TrendingUp, TrendingDown, FileText, Download, PieChart } from 'lucide-react';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { pdfService } from '../lib/pdfService';
 import toast, { Toaster } from 'react-hot-toast';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
@@ -18,6 +17,7 @@ export default function Financeiro() {
     const [lancamentos, setLancamentos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [resumo, setResumo] = useState({ entradas: 0, saidas: 0, saldo: 0 });
+    const [config, setConfig] = useState(null);
 
     // Form State
     const [modalOpen, setModalOpen] = useState(false);
@@ -50,6 +50,9 @@ export default function Financeiro() {
             if (error) throw error;
             setLancamentos(data || []);
             calcularResumo(data || []);
+
+            const { data: configData } = await supabase.from('configuracoes').select('*').limit(1).single();
+            setConfig(configData);
         } catch (error) {
             console.error("Erro ao carregar financeiro:", error);
             toast.error("Erro ao carregar dados financeiros.");
@@ -151,49 +154,6 @@ export default function Financeiro() {
         }
         setModalOpen(true);
     };
-
-    const closeModal = () => {
-        setModalOpen(false);
-        setEditingId(null);
-    };
-
-    const gerarRelatorioPDF = () => {
-        const doc = new jsPDF();
-
-        doc.setFillColor(139, 92, 246);
-        doc.rect(0, 0, 210, 30, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(18);
-        doc.text("Relatório Financeiro", 105, 20, { align: 'center' });
-
-        const body = lancamentos.map(l => [
-            new Date(l.data).toLocaleDateString('pt-BR'),
-            l.descricao,
-            l.categoria || 'Geral',
-            l.tipo.toUpperCase(),
-            `R$ ${l.valor.toFixed(2)}`
-        ]);
-
-        doc.autoTable({
-            startY: 40,
-            head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor']],
-            body: body,
-            theme: 'striped',
-            headStyles: { fillColor: [139, 92, 246] }
-        });
-
-        const finalY = doc.lastAutoTable.finalY + 10;
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
-        doc.text(`Total Entradas: R$ ${resumo.entradas.toFixed(2)}`, 14, finalY);
-        doc.text(`Total Saídas: R$ ${resumo.saidas.toFixed(2)}`, 14, finalY + 7);
-        doc.setFontSize(14);
-        doc.setTextColor(resumo.saldo >= 0 ? 0 : 200, resumo.saldo >= 0 ? 100 : 0, 0);
-        doc.text(`Saldo Líquido: R$ ${resumo.saldo.toFixed(2)}`, 14, finalY + 16);
-
-        doc.save('relatorio_financeiro.pdf');
-    };
-
     // Chart Data
     const chartData = {
         labels: ['Entradas', 'Saídas'],

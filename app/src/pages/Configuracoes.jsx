@@ -13,7 +13,7 @@ export default function Configuracoes() {
     const [configId, setConfigId] = useState(null);
 
     const [formData, setFormData] = useState({
-        nome_clinica: 'PetClínica São Lázaro',
+        nome_clinica: '',
         endereco: '',
         telefone: '',
         cor_primaria: '#9333ea',

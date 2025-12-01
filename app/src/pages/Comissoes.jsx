@@ -5,8 +5,7 @@ import Card, { CardContent } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { DollarSign, Calendar, User, Download, Search } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { pdfService } from '../lib/pdfService';
 
 export default function Comissoes() {
     const [funcionarios, setFuncionarios] = useState([]);
@@ -74,30 +73,45 @@ export default function Comissoes() {
         }
     };
 
-    const exportarPDF = () => {
-        const doc = new jsPDF();
+    const exportarPDF = async () => {
+        try {
+            const config = await supabase.from('configuracoes').select('*').limit(1).single().then(r => r.data);
 
-        doc.setFontSize(18);
-        doc.text(`Relatório de Comissões - ${mesSelecionado}`, 14, 20);
-
-        const body = comissoes.map(c => [
-            c.nome,
-            `${c.percentual}%`,
-            c.qtdVendas,
-            `R$ ${c.totalVendas.toFixed(2)}`,
-            `R$ ${c.valorComissao.toFixed(2)}`
-        ]);
-
-        autoTable(doc, {
-            startY: 30,
-            head: [['Funcionário', 'Comissão (%)', 'Qtd Vendas', 'Total Vendido', 'A Pagar']],
-            body: body,
-            foot: [['TOTAL', '', '', `R$ ${comissoes.reduce((a, b) => a + b.totalVendas, 0).toFixed(2)}`, `R$ ${comissoes.reduce((a, b) => a + b.valorComissao, 0).toFixed(2)}`]],
-            theme: 'grid',
-            headStyles: { fillColor: [139, 92, 246] }
-        });
-
-        doc.save(`comissoes_${mesSelecionado}.pdf`);
+            await pdfService.generate({
+                title: `Relatório de Comissões - ${mesSelecionado}`,
+                config: config,
+                fileName: `comissoes_${mesSelecionado}.pdf`,
+                content: [
+                    {
+                        type: 'info',
+                        data: {
+                            'Mês Referência': mesSelecionado,
+                            'Total a Pagar': `R$ ${comissoes.reduce((a, b) => a + b.valorComissao, 0).toFixed(2)}`,
+                            'Funcionários': comissoes.length.toString()
+                        }
+                    },
+                    {
+                        type: 'table',
+                        head: ['Funcionário', 'Comissão (%)', 'Qtd Vendas', 'Total Vendido', 'A Pagar'],
+                        body: comissoes.map(c => [
+                            c.nome,
+                            `${c.percentual}%`,
+                            c.qtdVendas,
+                            `R$ ${c.totalVendas.toFixed(2)}`,
+                            `R$ ${c.valorComissao.toFixed(2)}`
+                        ]),
+                        options: {
+                            foot: [['TOTAL', '', '', `R$ ${comissoes.reduce((a, b) => a + b.totalVendas, 0).toFixed(2)}`, `R$ ${comissoes.reduce((a, b) => a + b.valorComissao, 0).toFixed(2)}`]],
+                            footStyles: { fillColor: [139, 92, 246], textColor: 255, fontStyle: 'bold' }
+                        }
+                    }
+                ]
+            });
+            toast.success('Relatório exportado com sucesso!');
+        } catch (error) {
+            console.error("Erro ao exportar PDF:", error);
+            toast.error("Erro ao exportar PDF.");
+        }
     };
 
     return (
