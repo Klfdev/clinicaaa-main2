@@ -10,7 +10,7 @@ import Prontuarios from './pages/Prontuarios';
 import Financeiro from './pages/Financeiro';
 import Configuracoes from './pages/Configuracoes';
 import Onboarding from './pages/Onboarding';
-import AgendamentoPublico from './pages/AgendamentoPublico';
+import AgendamentoPublico from './pages/PublicScheduling';
 import Internacoes from './pages/Internacoes';
 import Estoque from './pages/Estoque';
 import Vendas from './pages/Vendas';
