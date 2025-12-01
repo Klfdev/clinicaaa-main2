@@ -18,6 +18,7 @@ export default function Funcionarios() {
     // Form State
     const [formData, setFormData] = useState({
         role: 'recepcionista',
+        nome: '',
         cargo: '',
         cpf: '',
         telefone: '',
@@ -43,7 +44,8 @@ export default function Funcionarios() {
             setFuncionarios(data || []);
         } catch (error) {
             console.error("Erro ao carregar funcionários:", error);
-            toast.error("Erro ao carregar lista de funcionários.");
+            // Silently fail or show toast only if critical
+            // toast.error("Erro ao carregar lista de funcionários.");
         } finally {
             setLoading(false);
         }
@@ -68,7 +70,7 @@ export default function Funcionarios() {
     const handleEditClick = (func) => {
         setSelectedFuncionario(func);
         setFormData({
-            role: 'recepcionista', // Campo legado ou visual, já que acesso é via profiles
+            role: 'recepcionista',
             nome: func.nome,
             cargo: func.cargo || '',
             cpf: func.cpf || '',
@@ -107,7 +109,8 @@ export default function Funcionarios() {
                 data_admissao: formData.data_admissao || null,
                 salario: formData.salario ? parseFloat(formData.salario) : null,
                 comissao_percentual: formData.comissao_percentual ? parseFloat(formData.comissao_percentual) : 0,
-                pix_chave: formData.pix_chave
+                pix_chave: formData.pix_chave,
+                // organization_id is handled by trigger/RLS
             };
 
             if (selectedFuncionario) {
@@ -134,7 +137,7 @@ export default function Funcionarios() {
     };
 
     const filteredFuncionarios = funcionarios.filter(f =>
-        (f.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (f.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (f.cargo || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
