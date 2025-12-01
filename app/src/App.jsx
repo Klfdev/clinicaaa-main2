@@ -16,6 +16,7 @@ import Estoque from './pages/Estoque';
 import Vendas from './pages/Vendas';
 import Funcionarios from './pages/Funcionarios';
 import Comissoes from './pages/Comissoes';
+import Receitas from './pages/Receitas';
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
             <Route path="/vendas" element={<Vendas />} />
             <Route path="/funcionarios" element={<Funcionarios />} />
             <Route path="/comissoes" element={<Comissoes />} />
+            <Route path="/receitas" element={<Receitas />} />
           </Route>
 
           {/* Fallback */}

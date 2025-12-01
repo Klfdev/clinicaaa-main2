@@ -31,6 +31,7 @@ export default function Layout({ children }) {
         { name: 'Agenda', path: '/agendamentos', icon: Calendar, roles: ['admin', 'veterinario', 'recepcionista'] },
         { name: 'Pacientes', path: '/pacientes', icon: Users, roles: ['admin', 'veterinario', 'recepcionista'] },
         { name: 'Prontuários', path: '/prontuarios', icon: ClipboardList, roles: ['admin', 'veterinario'] },
+        { name: 'Receitas', path: '/receitas', icon: FileText, roles: ['admin', 'veterinario'] },
         { name: 'Internações', path: '/internacoes', icon: Activity, roles: ['admin', 'veterinario'] },
         { name: 'Vendas', path: '/vendas', icon: ShoppingCart, roles: ['admin', 'recepcionista'] },
         { name: 'Estoque', path: '/estoque', icon: Package, roles: ['admin', 'veterinario'] },
