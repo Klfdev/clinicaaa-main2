@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
         // Set persistence based on "Remember Me"
         // 'local' = persists on browser close (default)
         // 'session' = clears on browser close
-        await supabase.auth.setPersistence(remember ? 'local' : 'session');
+        // await supabase.auth.setPersistence(remember ? 'local' : 'session'); // Método não suportado nesta versão
 
         const { data, error } = await supabase.auth.signInWithPassword({
             email,
