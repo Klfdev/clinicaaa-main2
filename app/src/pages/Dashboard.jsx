@@ -14,7 +14,8 @@ import {
     ArrowRight,
     Clock,
     UserPlus,
-    Syringe
+    Syringe,
+    Phone
 } from 'lucide-react';
 import {
     Chart as ChartJS,
@@ -265,7 +266,7 @@ export default function Dashboard() {
                 // 10.1 Appointments
                 const { data: upcomingAppointments } = await supabase
                     .from('agendamentos')
-                    .select('data, horario, "nomePet", servico')
+                    .select('data, horario, "nomePet", servico, telefone, "nomeTutor", pacientes(tutores(nome, whatsapp))')
                     .gte('data', todayStr)
                     .lte('data', tomorrowStr)
                     .order('data', { ascending: true })
@@ -281,7 +282,9 @@ export default function Dashboard() {
                         color: 'text-blue-600',
                         bg: 'bg-blue-50 dark:bg-blue-900/10',
                         border: 'border-blue-100 dark:border-blue-900/30',
-                        dot: 'bg-blue-500'
+                        dot: 'bg-blue-500',
+                        phone: app.pacientes?.tutores?.whatsapp || app.telefone,
+                        tutorName: app.pacientes?.tutores?.nome || app.nomeTutor
                     });
                 });
 
@@ -583,10 +586,24 @@ export default function Dashboard() {
                                     alerts.map((alert, i) => (
                                         <div key={i} className={`flex gap-3 items-start p-3 rounded-lg border ${alert.bg} ${alert.border}`}>
                                             <div className={`w-2 h-2 mt-2 rounded-full ${alert.dot} shrink-0`} />
-                                            <div>
+                                            <div className="flex-1">
                                                 <p className={`text-sm font-medium ${alert.color}`}>{alert.title}</p>
                                                 <p className="text-xs text-gray-600 dark:text-gray-400">{alert.message}</p>
                                             </div>
+                                            {alert.type === 'appointment' && alert.phone && (
+                                                <Button
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 rounded-full bg-green-500 hover:bg-green-600 text-white border-none flex items-center justify-center shrink-0"
+                                                    title="Enviar WhatsApp"
+                                                    onClick={() => {
+                                                        const phone = alert.phone.replace(/\D/g, '');
+                                                        const message = `Olá ${alert.tutorName || ''}, lembrete: ${alert.message}. Confirmado? 🐾`;
+                                                        window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                                                    }}
+                                                >
+                                                    <Phone className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                         </div>
                                     ))
                                 )}
