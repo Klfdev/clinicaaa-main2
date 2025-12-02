@@ -299,8 +299,23 @@ export default function Dashboard() {
                     .order('data_revacina', { ascending: true })
                     .limit(5);
 
+                // Fetch patients for phone mapping (since vacinas doesn't have FK yet)
+                const { data: patientsForMap } = await supabase
+                    .from('pacientes')
+                    .select('nome, tutores(nome, whatsapp)');
+
+                const patientMap = {};
+                patientsForMap?.forEach(p => {
+                    if (p.nome) patientMap[p.nome.toLowerCase()] = {
+                        phone: p.tutores?.whatsapp,
+                        tutor: p.tutores?.nome
+                    };
+                });
+
                 upcomingVaccines?.forEach(vac => {
                     const isToday = vac.data_revacina === todayStr;
+                    const patientInfo = patientMap[vac.nome_pet?.toLowerCase()];
+
                     newAlerts.push({
                         type: 'vaccine',
                         title: isToday ? 'Vacina Vence Hoje!' : 'Vacina Vencendo',
@@ -308,7 +323,9 @@ export default function Dashboard() {
                         color: 'text-green-600',
                         bg: 'bg-green-50 dark:bg-green-900/10',
                         border: 'border-green-100 dark:border-green-900/30',
-                        dot: 'bg-green-500'
+                        dot: 'bg-green-500',
+                        phone: patientInfo?.phone,
+                        tutorName: patientInfo?.tutor
                     });
                 });
 
@@ -590,7 +607,7 @@ export default function Dashboard() {
                                                 <p className={`text-sm font-medium ${alert.color}`}>{alert.title}</p>
                                                 <p className="text-xs text-gray-600 dark:text-gray-400">{alert.message}</p>
                                             </div>
-                                            {alert.type === 'appointment' && alert.phone && (
+                                            {(alert.type === 'appointment' || alert.type === 'vaccine') && alert.phone && (
                                                 <Button
                                                     size="sm"
                                                     className="h-8 w-8 p-0 rounded-full bg-green-500 hover:bg-green-600 text-white border-none flex items-center justify-center shrink-0"
