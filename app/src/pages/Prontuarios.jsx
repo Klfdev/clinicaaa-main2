@@ -44,7 +44,8 @@ export default function Prontuarios() {
         tutor_endereco: '',
         pet_especie: '',
         pet_raca: '',
-        pet_sexo: ''
+        pet_sexo: '',
+        valor: ''
     });
 
     const [config, setConfig] = useState(null);
@@ -192,12 +193,35 @@ export default function Prontuarios() {
                 tutor_endereco: formData.tutor_endereco,
                 pet_especie: formData.pet_especie,
                 pet_raca: formData.pet_raca,
-                pet_sexo: formData.pet_sexo
+                pet_sexo: formData.pet_sexo,
+                valor: formData.valor ? parseFloat(formData.valor) : 0
             };
 
             const { error } = await supabase
                 .from('prontuarios')
                 .insert([payload]);
+
+            if (error) throw error;
+
+            // Automação Financeira
+            if (formData.valor && parseFloat(formData.valor) > 0) {
+                const { error: finError } = await supabase
+                    .from('financeiro')
+                    .insert([{
+                        tipo: 'entrada',
+                        categoria: 'Serviços',
+                        descricao: `Atendimento: ${formData.nomePet} (${formData.tipoAtendimento})`,
+                        valor: parseFloat(formData.valor),
+                        data: formData.data
+                    }]);
+
+                if (finError) {
+                    console.error("Erro na automação financeira:", finError);
+                    toast.error("Prontuário salvo, mas erro ao lançar no financeiro.");
+                } else {
+                    toast.success("Lançamento financeiro gerado!");
+                }
+            }
 
             if (error) throw error;
 
@@ -232,7 +256,8 @@ export default function Prontuarios() {
             tutor_endereco: '',
             pet_especie: '',
             pet_raca: '',
-            pet_sexo: ''
+            pet_sexo: '',
+            valor: ''
         });
     };
 
@@ -720,6 +745,17 @@ export default function Prontuarios() {
                                             <option>Cirurgia</option>
                                             <option>Vacinação</option>
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Valor do Atendimento (R$)</label>
+                                        <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={formData.valor}
+                                            onChange={e => setFormData({ ...formData, valor: e.target.value })}
+                                            placeholder="0.00"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">Se preenchido, gera lançamento automático no Financeiro.</p>
                                     </div>
                                 </div>
 
