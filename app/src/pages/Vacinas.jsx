@@ -53,13 +53,19 @@ export default function Vacinas() {
         }
     };
 
-    // Fetch Patients for Phone Lookup
+    // Fetch Patients for Dropdown and Phone Lookup
     const [pacientesMap, setPacientesMap] = useState({});
+    const [pacientesList, setPacientesList] = useState([]);
 
     useEffect(() => {
         const fetchPacientes = async () => {
-            const { data } = await supabase.from('pacientes').select('nome, tutores(whatsapp)');
+            const { data } = await supabase
+                .from('pacientes')
+                .select('id, nome, tutores(nome, whatsapp)')
+                .order('nome');
+
             if (data) {
+                setPacientesList(data);
                 const map = {};
                 data.forEach(p => {
                     if (p.nome) map[p.nome.toLowerCase()] = p.tutores?.whatsapp;
@@ -366,18 +372,30 @@ export default function Vacinas() {
                 )}
 
                 {/* Modal */}
+                {/* Modal */}
                 <Modal
                     isOpen={modalOpen}
                     onClose={closeModal}
                     title={editingId ? 'Editar Vacina' : 'Nova Vacina'}
                 >
                     <form onSubmit={handleSave} className="space-y-4">
-                        <Input
-                            label="Nome do Pet *"
-                            value={formData.nomePet}
-                            onChange={e => setFormData({ ...formData, nomePet: e.target.value })}
-                            required
-                        />
+                        <div className="space-y-1">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nome do Pet *</label>
+                            <select
+                                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                value={formData.nomePet}
+                                onChange={e => setFormData({ ...formData, nomePet: e.target.value })}
+                                required
+                            >
+                                <option value="">Selecione um paciente...</option>
+                                {pacientesList.map(p => (
+                                    <option key={p.id} value={p.nome}>
+                                        {p.nome} {p.tutores?.nome ? `(Tutor: ${p.tutores.nome})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
                         <Input
                             label="Nome da Vacina *"
                             value={formData.nomeVacina}
@@ -411,7 +429,7 @@ export default function Vacinas() {
                         </div>
                     </form>
                 </Modal>
-            </div>
-        </Layout>
+            </div >
+        </Layout >
     );
 }
