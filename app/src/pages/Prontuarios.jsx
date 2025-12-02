@@ -23,6 +23,7 @@ export default function Prontuarios() {
     const [selectedPetFilter, setSelectedPetFilter] = useState('');
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
+    const [previewImage, setPreviewImage] = useState(null);
 
     // Form State - Agora inclui TODOS os campos para edição livre
     const [formData, setFormData] = useState({
@@ -374,6 +375,31 @@ export default function Prontuarios() {
         ...vacinas.map(v => ({ ...v, type: 'vacina', dateObj: new Date(v.data_aplicacao) }))
     ].sort((a, b) => b.dateObj - a.dateObj);
 
+    const renderAnexos = (anexos) => {
+        if (!anexos || anexos.length === 0) return null;
+        return (
+            <div className="flex flex-wrap gap-2 mt-3">
+                {anexos.map((anexo, i) => {
+                    const isImage = anexo.name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                    return (
+                        <div
+                            key={i}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isImage) setPreviewImage(anexo.url);
+                                else window.open(anexo.url, '_blank');
+                            }}
+                            className="group cursor-pointer flex items-center gap-2 text-xs bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all border border-gray-200 dark:border-gray-600"
+                        >
+                            {isImage ? <FileText className="w-4 h-4 text-purple-500" /> : <Paperclip className="w-4 h-4 text-gray-500" />}
+                            <span className="truncate max-w-[150px]">{anexo.name}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
     return (
         <Layout>
             <Toaster position="top-right" />
@@ -471,6 +497,8 @@ export default function Prontuarios() {
                                                         </div>
                                                     )}
 
+                                                    {renderAnexos(item.anexos)}
+
                                                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex gap-2">
                                                         <Button variant="ghost" size="sm" onClick={() => gerarPDF(item)} className="h-8 text-xs">
                                                             <Download className="w-3 h-3 mr-1" /> PDF
@@ -506,6 +534,7 @@ export default function Prontuarios() {
                                                     {p.type === 'prontuario' && (
                                                         <div className="space-y-2 text-gray-600 dark:text-gray-300">
                                                             <p><span className="font-semibold">Diagnóstico:</span> {p.diagnostico}</p>
+                                                            {renderAnexos(p.anexos)}
                                                         </div>
                                                     )}
                                                 </div>
@@ -760,6 +789,27 @@ export default function Prontuarios() {
                     </form>
                 </Modal>
             </div>
+
+            {/* Image Lightbox */}
+            {previewImage && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm transition-opacity"
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                        onClick={() => setPreviewImage(null)}
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    <img
+                        src={previewImage}
+                        alt="Preview"
+                        className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </Layout>
     );
 }
