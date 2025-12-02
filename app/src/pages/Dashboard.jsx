@@ -614,7 +614,14 @@ export default function Dashboard() {
                                                     title="Enviar WhatsApp"
                                                     onClick={() => {
                                                         const phone = alert.phone.replace(/\D/g, '');
-                                                        const message = `Olá ${alert.tutorName || ''}, lembrete: ${alert.message}. Confirmado? 🐾`;
+                                                        let message = '';
+
+                                                        if (alert.type === 'vaccine') {
+                                                            message = `Olá ${alert.tutorName || ''}, tudo bem? 🐾\n\nPassando para lembrar que a vacina do(a) seu pet *${alert.message}*.\n\nVamos deixar a proteção em dia?`;
+                                                        } else {
+                                                            message = `Olá ${alert.tutorName || ''}, lembrete: ${alert.message}. Confirmado? 🐾`;
+                                                        }
+
                                                         window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
                                                     }}
                                                 >

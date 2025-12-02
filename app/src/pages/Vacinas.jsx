@@ -356,8 +356,11 @@ export default function Vacinas() {
                                                     if (!phone) return toast.error("Telefone do tutor não encontrado.");
 
                                                     const date = new Date(vacina.data_revacina).toLocaleDateString('pt-BR');
-                                                    const status = vencida ? "está vencida desde" : "vai vencer em";
-                                                    const message = `Olá! Passando para lembrar que a vacina ${vacina.nome_vacina} do(a) ${vacina.nome_pet} ${status} ${date}. Vamos agendar? 🐾`;
+                                                    const status = vencida ? "venceu" : "vence";
+                                                    const clinicName = config?.nome_clinica || "Clínica Veterinária";
+
+                                                    const message = `Olá, tudo bem? 🐾\n\nAqui é da *${clinicName}*.\n\nPassando para lembrar que a vacina *${vacina.nome_vacina}* do(a) *${vacina.nome_pet}* ${status} dia *${date}*.\n\nManter a imunização em dia é fundamental para a saúde do seu pet. Vamos agendar um horário?`;
+
                                                     window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
                                                 }}
                                             >
