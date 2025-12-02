@@ -149,6 +149,74 @@ export const pdfService = {
         }
 
         doc.save(fileName);
+    },
+
+    /**
+     * Gera relatório financeiro específico
+     */
+    generateFinancialReport: async (lancamentos, resumo, config) => {
+        const doc = new jsPDF();
+        const primaryColor = config?.cor_primaria || '#9333ea';
+
+        // Header simplificado
+        doc.setFillColor(primaryColor);
+        doc.rect(0, 0, 210, 30, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Relatório Financeiro', 105, 18, { align: 'center' });
+
+        let currentY = 40;
+
+        // Resumo
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        doc.text(`Período: ${new Date().toLocaleDateString('pt-BR')}`, 14, currentY);
+        currentY += 10;
+
+        const summaryData = [
+            ['Entradas', `R$ ${resumo.entradas.toFixed(2)}`],
+            ['Saídas', `R$ ${resumo.saidas.toFixed(2)}`],
+            ['Saldo', `R$ ${resumo.saldo.toFixed(2)}`]
+        ];
+
+        autoTable(doc, {
+            startY: currentY,
+            head: [['Resumo', 'Valor']],
+            body: summaryData,
+            theme: 'grid',
+            headStyles: { fillColor: primaryColor },
+            columnStyles: { 0: { fontStyle: 'bold' }, 1: { halign: 'right' } },
+            tableWidth: 80
+        });
+
+        currentY = doc.lastAutoTable.finalY + 15;
+
+        // Tabela de Lançamentos
+        doc.text('Detalhamento de Lançamentos', 14, currentY);
+        currentY += 5;
+
+        const tableBody = lancamentos.map(l => [
+            new Date(l.data).toLocaleDateString('pt-BR'),
+            l.descricao,
+            l.categoria || '-',
+            l.tipo.toUpperCase(),
+            `R$ ${l.valor.toFixed(2)}`
+        ]);
+
+        autoTable(doc, {
+            startY: currentY,
+            head: [['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor']],
+            body: tableBody,
+            theme: 'striped',
+            headStyles: { fillColor: primaryColor },
+            columnStyles: {
+                3: { fontStyle: 'bold', textColor: (cell) => cell.raw === 'ENTRADA' ? [34, 197, 94] : [239, 68, 68] },
+                4: { halign: 'right' }
+            }
+        });
+
+        doc.save('relatorio_financeiro.pdf');
     }
 };
 
