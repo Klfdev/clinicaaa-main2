@@ -356,7 +356,7 @@ export default function Vacinas() {
                                                     if (!phone) return toast.error("Telefone do tutor não encontrado.");
 
                                                     const date = new Date(vacina.data_revacina).toLocaleDateString('pt-BR');
-                                                    const status = vencida ? "venceu" : "vence";
+                                                    const status = vencida ? "venceu no" : "está vencendo no";
                                                     const clinicName = config?.nome_clinica || "Clínica Veterinária";
 
                                                     const message = `Olá, tudo bem? 🐾\n\nAqui é da *${clinicName}*.\n\nPassando para lembrar que a vacina *${vacina.nome_vacina}* do(a) *${vacina.nome_pet}* ${status} dia *${date}*.\n\nManter a imunização em dia é fundamental para a saúde do seu pet. Vamos agendar um horário?`;
@@ -374,7 +374,6 @@ export default function Vacinas() {
                     </div>
                 )}
 
-                {/* Modal */}
                 {/* Modal */}
                 <Modal
                     isOpen={modalOpen}

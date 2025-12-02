@@ -617,7 +617,9 @@ export default function Dashboard() {
                                                         let message = '';
 
                                                         if (alert.type === 'vaccine') {
-                                                            message = `Olá ${alert.tutorName || ''}, tudo bem? 🐾\n\nPassando para lembrar que a vacina do(a) seu pet *${alert.message}*.\n\nVamos deixar a proteção em dia?`;
+                                                            const isToday = alert.title.includes('Hoje');
+                                                            const status = isToday ? "vence hoje" : "está vencendo";
+                                                            message = `Olá ${alert.tutorName || ''}, tudo bem? 🐾\n\nPassando para lembrar que a vacina do(a) seu pet *${status}*.\n\nVamos deixar a proteção em dia?`;
                                                         } else {
                                                             message = `Olá ${alert.tutorName || ''}, lembrete: ${alert.message}. Confirmado? 🐾`;
                                                         }
