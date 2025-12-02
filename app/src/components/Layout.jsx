@@ -16,7 +16,9 @@ import {
     Package,
     FileText,
     Sun,
-    Moon
+    Moon,
+    ShoppingCart,
+    Percent
 } from 'lucide-react';
 
 export default function Layout({ children }) {
@@ -64,8 +66,10 @@ export default function Layout({ children }) {
         { name: 'Internações', path: '/internacoes', icon: Activity, roles: ['admin', 'veterinario'] },
         { name: 'Vacinas', path: '/vacinas', icon: Syringe, roles: ['admin', 'veterinario'] },
         { name: 'Estoque', path: '/estoque', icon: Package, roles: ['admin', 'veterinario'] },
+        { name: 'Vendas', path: '/vendas', icon: ShoppingCart, roles: ['admin', 'veterinario', 'recepcionista'] },
         { name: 'Receitas', path: '/receitas', icon: FileText, roles: ['admin', 'veterinario'] },
         { name: 'Funcionários', path: '/funcionarios', icon: Stethoscope, roles: ['admin'] },
+        { name: 'Comissões', path: '/comissoes', icon: Percent, roles: ['admin'] },
         { name: 'Financeiro', path: '/financeiro', icon: FileText, roles: ['admin'] },
         { name: 'Configurações', path: '/configuracoes', icon: Settings, roles: ['admin'] },
     ];
