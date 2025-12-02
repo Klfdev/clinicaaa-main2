@@ -19,6 +19,7 @@ export default function Pacientes() {
     const [editingTutorId, setEditingTutorId] = useState(null);
     const [tutorFormData, setTutorFormData] = useState({
         nome: '',
+        cpf: '',
         whatsapp: '',
         email: '',
         endereco: ''
@@ -34,6 +35,7 @@ export default function Pacientes() {
         raca: '',
         sexo: '',
         data_nascimento: '',
+        idade: '',
         peso: '',
         pelagem: '',
         observacoes: ''
@@ -120,13 +122,14 @@ export default function Pacientes() {
             setEditingTutorId(tutor.id);
             setTutorFormData({
                 nome: tutor.nome,
+                cpf: tutor.cpf || '',
                 whatsapp: tutor.whatsapp || '',
                 email: tutor.email || '',
                 endereco: tutor.endereco || ''
             });
         } else {
             setEditingTutorId(null);
-            setTutorFormData({ nome: '', whatsapp: '', email: '', endereco: '' });
+            setTutorFormData({ nome: '', cpf: '', whatsapp: '', email: '', endereco: '' });
         }
         setTutorModalOpen(true);
     };
@@ -208,6 +211,7 @@ export default function Pacientes() {
                 raca: patient.raca || '',
                 sexo: patient.sexo || '',
                 data_nascimento: patient.data_nascimento || '',
+                idade: patient.idade || '',
                 peso: patient.peso || '',
                 pelagem: patient.pelagem || '',
                 observacoes: patient.observacoes || ''
@@ -216,7 +220,7 @@ export default function Pacientes() {
             setEditingPatientId(null);
             setPatientFormData({
                 nome: '', especie: '', raca: '', sexo: '',
-                data_nascimento: '', peso: '', pelagem: '', observacoes: ''
+                data_nascimento: '', idade: '', peso: '', pelagem: '', observacoes: ''
             });
         }
         setPatientModalOpen(true);
@@ -322,6 +326,7 @@ export default function Pacientes() {
                                         <div>
                                             <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{tutor.nome}</h3>
                                             <div className="flex flex-wrap gap-3 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                                {tutor.cpf && <span className="flex items-center gap-1"><FileText className="w-3 h-3" /> {tutor.cpf}</span>}
                                                 {tutor.whatsapp && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {tutor.whatsapp}</span>}
                                                 {tutor.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {tutor.email}</span>}
                                             </div>
@@ -414,6 +419,11 @@ export default function Pacientes() {
                                     </h3>
                                     <div className="space-y-2 text-sm">
                                         <p className="font-medium text-lg">{selectedPatientTutor.nome}</p>
+                                        {selectedPatientTutor.cpf && (
+                                            <p className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                                                <FileText className="w-3 h-3" /> CPF: {selectedPatientTutor.cpf}
+                                            </p>
+                                        )}
                                         {selectedPatientTutor.whatsapp && (
                                             <p className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                                                 <Phone className="w-3 h-3" /> {selectedPatientTutor.whatsapp}
@@ -441,7 +451,9 @@ export default function Pacientes() {
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
                                             <p className="text-xs text-gray-500 mb-1">Idade</p>
-                                            <p className="font-medium">{calculateAge(selectedPatient.data_nascimento)}</p>
+                                            <p className="font-medium">
+                                                {selectedPatient.idade ? selectedPatient.idade : calculateAge(selectedPatient.data_nascimento)}
+                                            </p>
                                         </div>
                                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-100 dark:border-gray-700">
                                             <p className="text-xs text-gray-500 mb-1">Peso</p>
@@ -491,12 +503,20 @@ export default function Pacientes() {
                     title={editingTutorId ? 'Editar Tutor' : 'Novo Tutor'}
                 >
                     <form onSubmit={handleSaveTutor} className="space-y-4">
-                        <Input
-                            label="Nome do Tutor *"
-                            value={tutorFormData.nome}
-                            onChange={e => setTutorFormData({ ...tutorFormData, nome: e.target.value })}
-                            required
-                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                                label="Nome do Tutor *"
+                                value={tutorFormData.nome}
+                                onChange={e => setTutorFormData({ ...tutorFormData, nome: e.target.value })}
+                                required
+                            />
+                            <Input
+                                label="CPF"
+                                value={tutorFormData.cpf}
+                                onChange={e => setTutorFormData({ ...tutorFormData, cpf: e.target.value })}
+                                placeholder="000.000.000-00"
+                            />
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
                                 label="WhatsApp"
@@ -564,25 +584,31 @@ export default function Pacientes() {
                                     <option value="Fêmea">Fêmea</option>
                                 </select>
                             </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                            <Input
+                                label="Idade (Ex: 2 anos)"
+                                value={patientFormData.idade}
+                                onChange={e => setPatientFormData({ ...patientFormData, idade: e.target.value })}
+                            />
                             <Input
                                 label="Data de Nascimento"
                                 type="date"
                                 value={patientFormData.data_nascimento}
                                 onChange={e => setPatientFormData({ ...patientFormData, data_nascimento: e.target.value })}
                             />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
                             <Input
                                 label="Peso (Ex: 10kg)"
                                 value={patientFormData.peso}
                                 onChange={e => setPatientFormData({ ...patientFormData, peso: e.target.value })}
                             />
-                            <Input
-                                label="Pelagem/Cor"
-                                value={patientFormData.pelagem}
-                                onChange={e => setPatientFormData({ ...patientFormData, pelagem: e.target.value })}
-                            />
                         </div>
+                        <Input
+                            label="Pelagem/Cor"
+                            value={patientFormData.pelagem}
+                            onChange={e => setPatientFormData({ ...patientFormData, pelagem: e.target.value })}
+                        />
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Observações</label>
                             <textarea
@@ -600,6 +626,6 @@ export default function Pacientes() {
                     </form>
                 </Modal>
             </div>
-        </Layout>
+        </Layout >
     );
 }
