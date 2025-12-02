@@ -17,6 +17,7 @@ import Vendas from './pages/Vendas';
 import Funcionarios from './pages/Funcionarios';
 import Comissoes from './pages/Comissoes';
 import Receitas from './pages/Receitas';
+import Vacinas from './pages/Vacinas';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
             <Route path="/funcionarios" element={<Funcionarios />} />
             <Route path="/comissoes" element={<Comissoes />} />
             <Route path="/receitas" element={<Receitas />} />
+            <Route path="/vacinas" element={<Vacinas />} />
           </Route>
 
           {/* Fallback */}
