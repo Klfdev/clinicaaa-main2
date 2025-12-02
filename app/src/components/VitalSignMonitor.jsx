@@ -11,7 +11,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import { Activity, Thermometer, Wind, HeartPulse, Clock } from 'lucide-react';
+import { Activity, Thermometer, Wind, HeartPulse, Clock, Droplets, Gauge } from 'lucide-react';
 
 ChartJS.register(
     CategoryScale,
@@ -37,6 +37,14 @@ export default function VitalSignMonitor({ evolucoes }) {
             temp: recent.map(e => parseFloat(e.temperatura) || null),
             fc: recent.map(e => parseFloat(e.frequencia_cardiaca) || null),
             fr: recent.map(e => parseFloat(e.frequencia_respiratoria) || null),
+            spo2: recent.map(e => parseFloat(e.spo2) || null),
+            // For PA, we might just chart systolic if format is 120/80, or just show latest value.
+            // Let's try to parse systolic for the chart if possible.
+            paSystolic: recent.map(e => {
+                if (!e.pressao_arterial) return null;
+                const parts = e.pressao_arterial.split('/');
+                return parseFloat(parts[0]) || null;
+            }),
         };
     }, [evolucoes]);
 
@@ -68,20 +76,20 @@ export default function VitalSignMonitor({ evolucoes }) {
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-black/90 p-4 rounded-xl border border-gray-800 shadow-2xl">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 bg-black/90 p-4 rounded-xl border border-gray-800 shadow-2xl">
             {/* Temperature */}
             <div className="relative overflow-hidden rounded-lg bg-gray-900/50 border border-gray-800 p-3">
                 <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2 text-yellow-500">
-                        <Thermometer className="w-5 h-5" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Temp</span>
+                        <Thermometer className="w-4 h-4" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Temp</span>
                     </div>
-                    <span className="text-3xl font-mono font-bold text-yellow-400">
+                    <span className="text-2xl font-mono font-bold text-yellow-400">
                         {latest.temperatura || '--'}
-                        <span className="text-sm text-gray-500 ml-1">°C</span>
+                        <span className="text-xs text-gray-500 ml-1">°C</span>
                     </span>
                 </div>
-                <div className="h-16">
+                <div className="h-12">
                     <Line
                         data={{
                             labels: data.labels,
@@ -101,14 +109,15 @@ export default function VitalSignMonitor({ evolucoes }) {
             <div className="relative overflow-hidden rounded-lg bg-gray-900/50 border border-gray-800 p-3">
                 <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2 text-green-500">
-                        <HeartPulse className="w-5 h-5 animate-pulse" />
-                        <span className="text-xs font-bold uppercase tracking-wider">FC (BPM)</span>
+                        <HeartPulse className="w-4 h-4 animate-pulse" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">FC</span>
                     </div>
-                    <span className="text-3xl font-mono font-bold text-green-400">
+                    <span className="text-2xl font-mono font-bold text-green-400">
                         {latest.frequencia_cardiaca || '--'}
+                        <span className="text-xs text-gray-500 ml-1">bpm</span>
                     </span>
                 </div>
-                <div className="h-16">
+                <div className="h-12">
                     <Line
                         data={{
                             labels: data.labels,
@@ -128,14 +137,15 @@ export default function VitalSignMonitor({ evolucoes }) {
             <div className="relative overflow-hidden rounded-lg bg-gray-900/50 border border-gray-800 p-3">
                 <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2 text-blue-500">
-                        <Wind className="w-5 h-5" />
-                        <span className="text-xs font-bold uppercase tracking-wider">FR (MPM)</span>
+                        <Wind className="w-4 h-4" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">FR</span>
                     </div>
-                    <span className="text-3xl font-mono font-bold text-blue-400">
+                    <span className="text-2xl font-mono font-bold text-blue-400">
                         {latest.frequencia_respiratoria || '--'}
+                        <span className="text-xs text-gray-500 ml-1">mpm</span>
                     </span>
                 </div>
-                <div className="h-16">
+                <div className="h-12">
                     <Line
                         data={{
                             labels: data.labels,
@@ -151,7 +161,62 @@ export default function VitalSignMonitor({ evolucoes }) {
                 </div>
             </div>
 
-            <div className="col-span-full flex justify-between items-center text-xs text-gray-500 px-1">
+            {/* SPO2 */}
+            <div className="relative overflow-hidden rounded-lg bg-gray-900/50 border border-gray-800 p-3">
+                <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2 text-cyan-500">
+                        <Droplets className="w-4 h-4" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">SPO2</span>
+                    </div>
+                    <span className="text-2xl font-mono font-bold text-cyan-400">
+                        {latest.spo2 || '--'}
+                        <span className="text-xs text-gray-500 ml-1">%</span>
+                    </span>
+                </div>
+                <div className="h-12">
+                    <Line
+                        data={{
+                            labels: data.labels,
+                            datasets: [{
+                                data: data.spo2,
+                                borderColor: '#06b6d4', // cyan-500
+                                backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                                fill: true,
+                            }]
+                        }}
+                        options={commonOptions}
+                    />
+                </div>
+            </div>
+
+            {/* Blood Pressure */}
+            <div className="relative overflow-hidden rounded-lg bg-gray-900/50 border border-gray-800 p-3">
+                <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2 text-red-500">
+                        <Gauge className="w-4 h-4" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">PA</span>
+                    </div>
+                    <span className="text-2xl font-mono font-bold text-red-400 truncate">
+                        {latest.pressao_arterial || '--'}
+                    </span>
+                </div>
+                <div className="h-12">
+                    <Line
+                        data={{
+                            labels: data.labels,
+                            datasets: [{
+                                data: data.paSystolic,
+                                borderColor: '#ef4444', // red-500
+                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                fill: true,
+                            }]
+                        }}
+                        options={commonOptions}
+                    />
+                </div>
+            </div>
+
+            <div className="col-span-full flex justify-between items-center text-xs text-gray-500 px-1 mt-2">
                 <div className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     Última aferição: {latest.data_hora ? new Date(latest.data_hora).toLocaleString('pt-BR') : 'N/A'}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
@@ -9,11 +9,10 @@ import Modal from '../components/ui/Modal';
 import VitalSignMonitor from '../components/VitalSignMonitor';
 import { Plus, Activity, HeartPulse, Thermometer, Wind, Utensils, Clock, User, FileText, CheckCircle, XCircle, Monitor } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-
-import { pdfService } from '../lib/pdfService'; // Import pdfService
+import { pdfService } from '../lib/pdfService';
 
 export default function Internacoes() {
-    const { organization } = useAuth(); // Get organization for PDF config
+    const { organization } = useAuth();
     const [internacoes, setInternacoes] = useState([]);
     const [pacientes, setPacientes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -41,6 +40,8 @@ export default function Internacoes() {
         temperatura: '',
         frequencia_cardiaca: '',
         frequencia_respiratoria: '',
+        spo2: '',
+        pressao_arterial: '',
         alimentacao: '',
         medicacao_administrada: '',
         observacoes: '',
@@ -168,12 +169,14 @@ export default function Internacoes() {
                     },
                     {
                         type: 'table',
-                        head: ['Data/Hora', 'Temp', 'FC', 'FR', 'Obs', 'Resp.'],
+                        head: ['Data/Hora', 'Temp', 'FC', 'FR', 'SPO2', 'PA', 'Obs', 'Resp.'],
                         body: history.map(h => [
                             new Date(h.data_hora).toLocaleString('pt-BR'),
                             h.temperatura || '-',
                             h.frequencia_cardiaca || '-',
                             h.frequencia_respiratoria || '-',
+                            h.spo2 || '-',
+                            h.pressao_arterial || '-',
                             h.observacoes || '-',
                             h.responsavel || '-'
                         ])
@@ -215,6 +218,8 @@ export default function Internacoes() {
             temperatura: '',
             frequencia_cardiaca: '',
             frequencia_respiratoria: '',
+            spo2: '',
+            pressao_arterial: '',
             alimentacao: '',
             medicacao_administrada: '',
             observacoes: '',
@@ -259,6 +264,8 @@ export default function Internacoes() {
                 temperatura: '',
                 frequencia_cardiaca: '',
                 frequencia_respiratoria: '',
+                spo2: '',
+                pressao_arterial: '',
                 alimentacao: '',
                 medicacao_administrada: '',
                 observacoes: ''
@@ -420,6 +427,20 @@ export default function Internacoes() {
                                         placeholder="30"
                                     />
                                 </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Input
+                                        label="SPO2 (%)"
+                                        value={evoData.spo2}
+                                        onChange={e => setEvoData({ ...evoData, spo2: e.target.value })}
+                                        placeholder="98"
+                                    />
+                                    <Input
+                                        label="PA (mmHg)"
+                                        value={evoData.pressao_arterial}
+                                        onChange={e => setEvoData({ ...evoData, pressao_arterial: e.target.value })}
+                                        placeholder="120/80"
+                                    />
+                                </div>
                                 <Input
                                     label="Alimentação"
                                     value={evoData.alimentacao}
@@ -467,6 +488,8 @@ export default function Internacoes() {
                                                 <span className="flex items-center gap-1"><HeartPulse className="w-3 h-3" /> {evo.frequencia_cardiaca || '-'}</span>
                                                 <span className="flex items-center gap-1"><Wind className="w-3 h-3" /> {evo.frequencia_respiratoria || '-'}</span>
                                             </div>
+                                            {evo.spo2 && <p><span className="font-semibold">SPO2:</span> {evo.spo2}%</p>}
+                                            {evo.pressao_arterial && <p><span className="font-semibold">PA:</span> {evo.pressao_arterial}</p>}
                                             {evo.alimentacao && <p><span className="font-semibold">Alim:</span> {evo.alimentacao}</p>}
                                             {evo.medicacao_administrada && <p><span className="font-semibold">Med:</span> {evo.medicacao_administrada}</p>}
                                             {evo.observacoes && <p className="text-gray-600 dark:text-gray-400 italic">"{evo.observacoes}"</p>}
