@@ -217,6 +217,119 @@ export const pdfService = {
         });
 
         doc.save('relatorio_financeiro.pdf');
+    },
+
+    /**
+     * Gera Carteira de Vacinação com visual moderno
+     */
+    generateVaccineCard: async (data, config) => {
+        const doc = new jsPDF();
+        const primaryColor = config?.cor_primaria || '#16a34a'; // Verde padrão para vacinas
+        const secondaryColor = '#f0fdf4'; // Fundo claro
+
+        // --- HEADER MODERNO ---
+        // Faixa lateral colorida
+        doc.setFillColor(primaryColor);
+        doc.rect(0, 0, 15, 297, 'F');
+
+        // Título e Logo
+        doc.setTextColor(primaryColor);
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CARTEIRA DE', 25, 25);
+        doc.text('VACINAÇÃO', 25, 35);
+
+        // Info da Clínica (Direita)
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.setFont('helvetica', 'normal');
+        const clinicName = config?.nome_clinica || 'Clínica Veterinária';
+        doc.text(clinicName.toUpperCase(), 195, 25, { align: 'right' });
+        if (config?.telefone) doc.text(config.telefone, 195, 30, { align: 'right' });
+        if (config?.endereco) doc.text(config.endereco, 195, 35, { align: 'right' });
+
+        // --- DADOS DO PACIENTE (CARD) ---
+        doc.setFillColor(secondaryColor);
+        doc.setDrawColor(primaryColor);
+        doc.roundedRect(25, 45, 170, 40, 3, 3, 'FD');
+
+        doc.setTextColor(primaryColor);
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text(data.petName.toUpperCase(), 30, 55);
+
+        doc.setTextColor(60);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+
+        // Grid de dados
+        const col1 = 30;
+        const col2 = 90;
+        const col3 = 140;
+        const row1 = 65;
+        const row2 = 75;
+
+        doc.text(`Espécie: ${data.especie || '-'}`, col1, row1);
+        doc.text(`Raça: ${data.raca || '-'}`, col2, row1);
+        doc.text(`Sexo: ${data.sexo || '-'}`, col3, row1);
+
+        doc.text(`Tutor: ${data.tutorName || '-'}`, col1, row2);
+        doc.text(`Fone: ${data.tutorPhone || '-'}`, col2, row2);
+
+        // --- TABELA DE VACINAS ---
+        doc.setFontSize(14);
+        doc.setTextColor(primaryColor);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Histórico de Imunização', 25, 100);
+
+        const tableBody = data.vacinas.map(v => [
+            new Date(v.data_aplicacao).toLocaleDateString('pt-BR'),
+            v.nome_vacina,
+            v.lote || '-',
+            v.data_revacina ? new Date(v.data_revacina).toLocaleDateString('pt-BR') : 'Anual',
+            '__________________' // Espaço para assinatura
+        ]);
+
+        autoTable(doc, {
+            startY: 105,
+            head: [['Data', 'Vacina', 'Lote', 'Próxima Dose', 'Assinatura Vet.']],
+            body: tableBody,
+            theme: 'grid',
+            styles: {
+                fontSize: 10,
+                cellPadding: 6,
+                lineColor: [220, 220, 220],
+                lineWidth: 0.1
+            },
+            headStyles: {
+                fillColor: primaryColor,
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 25 },
+                1: { fontStyle: 'bold' },
+                2: { halign: 'center', cellWidth: 25 },
+                3: { halign: 'center', cellWidth: 30, textColor: [220, 38, 38] }, // Vermelho para destaque
+                4: { halign: 'center', textColor: [150, 150, 150] }
+            },
+            alternateRowStyles: {
+                fillColor: [250, 250, 250]
+            },
+            margin: { left: 25 }
+        });
+
+        // --- FOOTER ---
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text('Documento gerado eletronicamente.', 105, 290, { align: 'center' });
+        }
+
+        doc.save(`carteira_vacina_${data.petName}.pdf`);
     }
 };
 

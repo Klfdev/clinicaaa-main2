@@ -14,6 +14,7 @@ export default function Vacinas() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [config, setConfig] = useState(null);
+    const [viewMode, setViewMode] = useState('list'); // 'list' | 'alerts'
 
     // Form State
     const [modalOpen, setModalOpen] = useState(false);
@@ -159,35 +160,24 @@ export default function Vacinas() {
         if (petVacinas.length === 0) return toast.error("Nenhuma vacina encontrada para este pet.");
 
         try {
-            await pdfService.generate({
-                title: 'Carteira de Vacinação',
-                config: config,
-                fileName: `carteirinha_${petName}.pdf`,
-                content: [
-                    {
-                        type: 'info',
-                        data: {
-                            'Paciente': petName,
-                            'Clínica': config?.nome_clinica || "PetClínica",
-                            'Emissão': new Date().toLocaleDateString('pt-BR')
-                        }
-                    },
-                    {
-                        type: 'table',
-                        head: ['Data', 'Vacina', 'Lote', 'Revacina'],
-                        body: petVacinas.map(v => [
-                            new Date(v.data_aplicacao).toLocaleDateString('pt-BR'),
-                            v.nome_vacina,
-                            v.lote || '-',
-                            v.data_revacina ? new Date(v.data_revacina).toLocaleDateString('pt-BR') : '-'
-                        ])
-                    },
-                    {
-                        type: 'text',
-                        value: "Mantenha esta carteirinha sempre atualizada."
-                    }
-                ]
-            });
+            // Tentar buscar dados completos do paciente
+            const { data: paciente } = await supabase
+                .from('pacientes')
+                .select('*, tutores(*)')
+                .ilike('nome', petName)
+                .maybeSingle();
+
+            const cardData = {
+                petName: petName,
+                especie: paciente?.especie,
+                raca: paciente?.raca,
+                sexo: paciente?.sexo,
+                tutorName: paciente?.tutores?.nome,
+                tutorPhone: paciente?.tutores?.whatsapp,
+                vacinas: petVacinas
+            };
+
+            await pdfService.generateVaccineCard(cardData, config);
             toast.success('Carteirinha gerada com sucesso!');
         } catch (error) {
             console.error("Erro ao gerar PDF:", error);
@@ -203,6 +193,16 @@ export default function Vacinas() {
 
     const uniquePets = [...new Set(vacinas.map(v => v.nome_pet))];
     const isVencida = (date) => new Date(date) < new Date();
+
+    // Filtro de Alertas (Vencidas ou vencendo em 30 dias)
+    const vacinasAlerta = vacinas.filter(v => {
+        if (!v.data_revacina) return false;
+        const hoje = new Date();
+        const revacina = new Date(v.data_revacina);
+        const diffTime = revacina - hoje;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 30; // Vencidas (negativo) ou vencendo em 30 dias
+    }).sort((a, b) => new Date(a.data_revacina) - new Date(b.data_revacina));
 
     return (
         <Layout>
@@ -221,146 +221,171 @@ export default function Vacinas() {
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                        <Input
-                            placeholder="Buscar por pet, vacina ou lote..."
-                            value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
-                            className="pl-10"
-                        />
-                    </div>
-                </div>
-
-                {/* Print Cards Section */}
-                {uniquePets.length > 0 && (
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                        <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                            <Printer className="w-4 h-4" /> Imprimir Carteirinhas
-                        </h3>
-                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                            {uniquePets.map(pet => (
-                                <button
-                                    key={pet}
-                                    onClick={() => gerarCarteirinha(pet)}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors whitespace-nowrap border border-green-100 dark:border-green-800"
-                                >
-                                    <FileText className="w-3 h-3" /> {pet}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* List */}
-                <div className="grid grid-cols-1 gap-4">
-                    {filteredVacinas.map((vacina) => (
-                        <Card key={vacina.id} className="hover:shadow-md transition-shadow">
-                            <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full text-green-600 dark:text-green-400">
-                                        <Syringe className="w-6 h-6" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">{vacina.nome_pet}</h3>
-                                        <p className="text-sm text-gray-500">{vacina.nome_vacina} {vacina.lote && `(Lote: ${vacina.lote})`}</p>
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col md:flex-row items-end md:items-center gap-4 md:gap-6 w-full md:w-auto">
-                                    <div className="text-right">
-                                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                            Aplicada: {new Date(vacina.data_aplicacao).toLocaleDateString('pt-BR')}
-                                        </p>
-                                        {vacina.data_revacina && (
-                                            <p className={`text-xs font-medium flex items-center gap-1 justify-end ${isVencida(vacina.data_revacina) ? 'text-red-600' : 'text-orange-600'}`}>
-                                                <Clock className="w-3 h-3" />
-                                                Revacina: {new Date(vacina.data_revacina).toLocaleDateString('pt-BR')}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <Button
-                                            size="sm"
-                                            className="bg-green-500 hover:bg-green-600 text-white border-none h-9 w-9 p-0 rounded-full flex items-center justify-center"
-                                            title="Enviar Lembrete WhatsApp"
-                                            onClick={() => {
-                                                const phone = pacientesMap[vacina.nome_pet.toLowerCase()]?.replace(/\D/g, '');
-                                                if (!phone) return toast.error("Telefone do tutor não encontrado.");
-
-                                                const date = vacina.data_revacina ? new Date(vacina.data_revacina).toLocaleDateString('pt-BR') : 'Indefinido';
-                                                const message = `Olá! Lembrete de vacina para ${vacina.nome_pet}: ${vacina.nome_vacina}. Vence em: ${date}. 🐾`;
-                                                window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
-                                            }}
-                                        >
-                                            <Phone className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => openModal(vacina)}>
-                                            <Edit2 className="w-4 h-4 text-blue-600" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(vacina.id)}>
-                                            <Trash2 className="w-4 h-4 text-red-600" />
-                                        </Button>
-                                    </div>
-                                </div>
+                    {/* Print Cards Section */}
+                    {uniquePets.length > 0 && (
+                        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h3 className="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                <Printer className="w-4 h-4" /> Imprimir Carteirinhas
+                            </h3>
+                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                {uniquePets.map(pet => (
+                                    <button
+                                        key={pet}
+                                        onClick={() => gerarCarteirinha(pet)}
+                                        className="flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors whitespace-nowrap border border-green-100 dark:border-green-800"
+                                    >
+                                        <FileText className="w-3 h-3" /> {pet}
+                                    </button>
+                                ))}
                             </div>
-                        </Card>
-                    ))}
-                    {filteredVacinas.length === 0 && (
-                        <div className="text-center py-10 text-gray-500">
-                            Nenhuma vacina encontrada.
                         </div>
                     )}
-                </div>
 
-                {/* Modal */}
-                <Modal
-                    isOpen={modalOpen}
-                    onClose={closeModal}
-                    title={editingId ? 'Editar Vacina' : 'Nova Vacina'}
-                >
-                    <form onSubmit={handleSave} className="space-y-4">
-                        <Input
-                            label="Nome do Pet *"
-                            value={formData.nomePet}
-                            onChange={e => setFormData({ ...formData, nomePet: e.target.value })}
-                            required
-                        />
-                        <Input
-                            label="Nome da Vacina *"
-                            value={formData.nomeVacina}
-                            onChange={e => setFormData({ ...formData, nomeVacina: e.target.value })}
-                            required
-                        />
-                        <div className="grid grid-cols-2 gap-4">
+                    {/* List */}
+                    {/* List Content */}
+                    {viewMode === 'list' ? (
+                        <div className="grid grid-cols-1 gap-4">
+                            {filteredVacinas.map((vacina) => (
+                                <Card key={vacina.id} className="hover:shadow-md transition-shadow">
+                                    <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-full text-green-600 dark:text-green-400">
+                                                <Syringe className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-900 dark:text-white">{vacina.nome_pet}</h3>
+                                                <p className="text-sm text-gray-500">{vacina.nome_vacina} {vacina.lote && `(Lote: ${vacina.lote})`}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col md:flex-row items-end md:items-center gap-4 md:gap-6 w-full md:w-auto">
+                                            <div className="text-right">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                    Aplicada: {new Date(vacina.data_aplicacao).toLocaleDateString('pt-BR')}
+                                                </p>
+                                                {vacina.data_revacina && (
+                                                    <p className={`text-xs font-medium flex items-center gap-1 justify-end ${isVencida(vacina.data_revacina) ? 'text-red-600' : 'text-orange-600'}`}>
+                                                        <Clock className="w-3 h-3" />
+                                                        Revacina: {new Date(vacina.data_revacina).toLocaleDateString('pt-BR')}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <Button variant="ghost" size="icon" onClick={() => openModal(vacina)}>
+                                                    <Edit2 className="w-4 h-4 text-blue-600" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(vacina.id)}>
+                                                    <Trash2 className="w-4 h-4 text-red-600" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                            {filteredVacinas.length === 0 && (
+                                <div className="text-center py-10 text-gray-500">
+                                    Nenhuma vacina encontrada.
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                            {vacinasAlerta.length === 0 ? (
+                                <div className="text-center py-12 bg-green-50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/30">
+                                    <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                                    <h3 className="text-lg font-bold text-green-700 dark:text-green-300">Tudo em dia!</h3>
+                                    <p className="text-green-600 dark:text-green-400">Nenhuma vacina vencida ou vencendo nos próximos 30 dias.</p>
+                                </div>
+                            ) : (
+                                vacinasAlerta.map((vacina) => {
+                                    const vencida = isVencida(vacina.data_revacina);
+                                    return (
+                                        <Card key={vacina.id} className={`border-l-4 ${vencida ? 'border-red-500' : 'border-orange-500'}`}>
+                                            <div className="p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-3 rounded-full ${vencida ? 'bg-red-100 text-red-600' : 'bg-orange-100 text-orange-600'}`}>
+                                                        <AlertTriangle className="w-6 h-6" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-bold text-gray-900 dark:text-white">{vacina.nome_pet}</h3>
+                                                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{vacina.nome_vacina}</p>
+                                                        <p className={`text-xs font-bold mt-1 ${vencida ? 'text-red-600' : 'text-orange-600'}`}>
+                                                            {vencida ? 'VENCIDA em ' : 'VENCE em '}
+                                                            {new Date(vacina.data_revacina).toLocaleDateString('pt-BR')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <Button
+                                                    className="bg-green-500 hover:bg-green-600 text-white border-none w-full md:w-auto"
+                                                    onClick={() => {
+                                                        const phone = pacientesMap[vacina.nome_pet.toLowerCase()]?.replace(/\D/g, '');
+                                                        if (!phone) return toast.error("Telefone do tutor não encontrado.");
+
+                                                        const date = new Date(vacina.data_revacina).toLocaleDateString('pt-BR');
+                                                        const status = vencida ? "está vencida desde" : "vai vencer em";
+                                                        const message = `Olá! Passando para lembrar que a vacina ${vacina.nome_vacina} do(a) ${vacina.nome_pet} ${status} ${date}. Vamos agendar? 🐾`;
+                                                        window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                                                    }}
+                                                >
+                                                    <Phone className="w-4 h-4 mr-2" /> Avisar Tutor no WhatsApp
+                                                </Button>
+                                            </div>
+                                        </Card>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
+
+                    {/* Modal */}
+                    <Modal
+                        isOpen={modalOpen}
+                        onClose={closeModal}
+                        title={editingId ? 'Editar Vacina' : 'Nova Vacina'}
+                    >
+                        <form onSubmit={handleSave} className="space-y-4">
                             <Input
-                                label="Data Aplicação *"
-                                type="date"
-                                value={formData.dataAplicacao}
-                                onChange={e => setFormData({ ...formData, dataAplicacao: e.target.value })}
+                                label="Nome do Pet *"
+                                value={formData.nomePet}
+                                onChange={e => setFormData({ ...formData, nomePet: e.target.value })}
                                 required
                             />
                             <Input
-                                label="Data Revacina"
-                                type="date"
-                                value={formData.dataRevacina}
-                                onChange={e => setFormData({ ...formData, dataRevacina: e.target.value })}
+                                label="Nome da Vacina *"
+                                value={formData.nomeVacina}
+                                onChange={e => setFormData({ ...formData, nomeVacina: e.target.value })}
+                                required
                             />
-                        </div>
-                        <Input
-                            label="Lote"
-                            value={formData.lote}
-                            onChange={e => setFormData({ ...formData, lote: e.target.value })}
-                        />
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input
+                                    label="Data Aplicação *"
+                                    type="date"
+                                    value={formData.dataAplicacao}
+                                    onChange={e => setFormData({ ...formData, dataAplicacao: e.target.value })}
+                                    required
+                                />
+                                <Input
+                                    label="Data Revacina"
+                                    type="date"
+                                    value={formData.dataRevacina}
+                                    onChange={e => setFormData({ ...formData, dataRevacina: e.target.value })}
+                                />
+                            </div>
+                            <Input
+                                label="Lote"
+                                value={formData.lote}
+                                onChange={e => setFormData({ ...formData, lote: e.target.value })}
+                            />
 
-                        <div className="flex justify-end gap-3 mt-6">
-                            <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
-                            <Button type="submit">Salvar</Button>
-                        </div>
-                    </form>
-                </Modal>
-            </div>
-        </Layout>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <Button type="button" variant="ghost" onClick={closeModal}>Cancelar</Button>
+                                <Button type="submit">Salvar</Button>
+                            </div>
+                        </form>
+                    </Modal>
+                </div>
+        </Layout >
     );
 }
