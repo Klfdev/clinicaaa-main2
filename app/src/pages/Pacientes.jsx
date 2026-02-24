@@ -370,6 +370,13 @@ export default function Pacientes() {
                                                             >
                                                                 <Edit2 className="w-3 h-3" />
                                                             </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleDeletePatient(pet.id); }}
+                                                                className="p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded text-red-500"
+                                                                title="Remover"
+                                                            >
+                                                                <Trash2 className="w-3 h-3" />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 ))}
