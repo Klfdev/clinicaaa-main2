@@ -154,7 +154,8 @@ export default function Receitas() {
             doc.setTextColor(100);
             doc.text(`${clinicAddress} • ${clinicPhone}`, 105, 285, { align: 'center' });
 
-            doc.save(`receita_${selectedPatient.nome}.pdf`);
+            const safeName = (selectedPatient?.nome || 'documento').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            doc.save(`receita_${safeName}.pdf`);
         } catch (error) {
             console.error("Erro ao gerar PDF:", error);
             toast.error("Erro ao gerar PDF.");

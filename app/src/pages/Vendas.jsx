@@ -232,10 +232,8 @@ export default function Vendas() {
         doc.text("Assinatura do Responsável", 105, finalY + 5, { align: 'center' });
 
         doc.setFontSize(10);
-        doc.setTextColor(139, 92, 246);
-        doc.text("Obrigado pela preferência!", 105, finalY + 20, { align: 'center' });
-
-        doc.save(`comprovante_${venda.cliente_nome.replace(/\s+/g, '_').toLowerCase()}_${data.replace(/\//g, '-')}.pdf`);
+        const safeCliente = (venda.cliente_nome || 'cliente').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        doc.save(`comprovante_venda_${safeCliente}.pdf`);
     };
 
     const vendasFiltradas = vendas.filter(v =>

@@ -277,7 +277,8 @@ export default function Prontuarios() {
             doc.setTextColor(100);
             doc.text(`${clinicAddress} • ${clinicPhone}`, 105, 285, { align: 'center' });
 
-            doc.save(`prontuario_${prontuario.nome_pet || 'documento'}.pdf`);
+            const safeName = (prontuario.nome_pet || prontuario.nomePet || 'documento').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            doc.save(`prontuario_${safeName}.pdf`);
         } catch (error) {
             console.error("Erro ao gerar PDF:", error);
             toast.error("Erro ao gerar PDF.");
