@@ -4,20 +4,17 @@ import Register from './pages/Register';
 import { AuthProvider } from './context/AuthContext';
 import { PrivateRoute } from './context/AuthContext';
 import Dashboard from './pages/Dashboard';
-import Pacientes from './pages/Pacientes';
+import Clientes from './pages/Clientes';
 import Agendamentos from './pages/Agendamentos';
-import Prontuarios from './pages/Prontuarios';
 import Financeiro from './pages/Financeiro';
 import Configuracoes from './pages/Configuracoes';
 import Onboarding from './pages/Onboarding';
 import AgendamentoPublico from './pages/PublicScheduling';
-import Internacoes from './pages/Internacoes';
 import Estoque from './pages/Estoque';
 import Vendas from './pages/Vendas';
 import Funcionarios from './pages/Funcionarios';
 import Comissoes from './pages/Comissoes';
-import Receitas from './pages/Receitas';
-import Vacinas from './pages/Vacinas';
+import AiInsights from './pages/AiInsights';
 
 function App() {
   return (
@@ -33,18 +30,15 @@ function App() {
           <Route element={<PrivateRoute />}>
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/" element={<Dashboard />} />
-            <Route path="/pacientes" element={<Pacientes />} />
+            <Route path="/ai-insights" element={<AiInsights />} />
+            <Route path="/clientes" element={<Clientes />} />
             <Route path="/agendamentos" element={<Agendamentos />} />
-            <Route path="/prontuarios" element={<Prontuarios />} />
             <Route path="/financeiro" element={<Financeiro />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
-            <Route path="/internacoes" element={<Internacoes />} />
             <Route path="/estoque" element={<Estoque />} />
             <Route path="/vendas" element={<Vendas />} />
             <Route path="/funcionarios" element={<Funcionarios />} />
             <Route path="/comissoes" element={<Comissoes />} />
-            <Route path="/receitas" element={<Receitas />} />
-            <Route path="/vacinas" element={<Vacinas />} />
           </Route>
 
           {/* Fallback */}

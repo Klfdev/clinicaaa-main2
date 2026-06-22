@@ -18,15 +18,14 @@ export default function Agendamentos() {
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
-    const [pacientes, setPacientes] = useState([]);
+    const [clientes, setClientes] = useState([]);
 
     // Form State
     const [formData, setFormData] = useState({
         data: '',
         horario: '',
-        paciente_id: '',
-        nomePet: '', // Fallback or display
-        nomeTutor: '',
+        cliente_id: '',
+        nomeCliente: '', // Fallback or display
         telefone: '',
         servico: '',
         status: 'Agendado'
@@ -44,36 +43,29 @@ export default function Agendamentos() {
                 .from('agendamentos')
                 .select(`
                     *,
-                    pacientes (
-                        nome,
-                        tutores (nome, whatsapp)
-                    )
+                    clientes ( nome, whatsapp )
                 `);
 
             if (errorAgend) throw errorAgend;
 
-            // Load Patients for dropdown
-            const { data: pacData, error: errorPac } = await supabase
-                .from('pacientes')
-                .select(`
-                    id, 
-                    nome, 
-                    tutores (nome, whatsapp)
-                `);
+            // Load Clients for dropdown
+            const { data: cliData, error: errorCli } = await supabase
+                .from('clientes')
+                .select(`id, nome, whatsapp`);
 
-            if (errorPac) throw errorPac;
-            setPacientes(pacData || []);
+            if (errorCli) throw errorCli;
+            setClientes(cliData || []);
 
             const formattedEvents = (agendamentos || []).map(doc => {
-                let color = '#9333ea'; // Default Purple (Agendado)
+                let color = '#D4AF37'; // Default Gold (Agendado)
                 if (doc.status === 'Confirmado') color = '#16a34a'; // Green
                 if (doc.status === 'Concluído') color = '#2563eb'; // Blue
                 if (doc.status === 'Cancelado') color = '#dc2626'; // Red
 
-                // Use linked patient data if available, otherwise fallback
-                const title = doc.pacientes
-                    ? `${doc.pacientes.nome} (${doc.pacientes.tutores?.nome})`
-                    : `${doc.nomePet} - ${doc.servico}`;
+                // Use linked client data if available, otherwise fallback
+                const title = doc.clientes
+                    ? `${doc.clientes.nome} - ${doc.servico}`
+                    : `${doc.nomeCliente} - ${doc.servico}`;
 
                 return {
                     id: doc.id,
@@ -83,16 +75,15 @@ export default function Agendamentos() {
                     borderColor: color,
                     extendedProps: {
                         ...doc,
-                        nomePet: doc.pacientes?.nome || doc.nomePet,
-                        nomeTutor: doc.pacientes?.tutores?.nome || doc.nomeTutor,
-                        telefone: doc.pacientes?.tutores?.whatsapp || doc.telefone
+                        nomeCliente: doc.clientes?.nome || doc.nomeCliente,
+                        telefone: doc.clientes?.whatsapp || doc.telefone
                     }
                 };
             });
             setEvents(formattedEvents);
         } catch (error) {
             console.error("Erro ao carregar agenda:", error);
-            toast.error("Erro ao carregar agenda.");
+            // toast.error("Erro ao carregar agenda."); // Suppress if table doesn't exist yet
         } finally {
             setLoading(false);
         }
@@ -102,9 +93,8 @@ export default function Agendamentos() {
         setFormData({
             data: arg.dateStr,
             horario: '09:00',
-            paciente_id: '',
-            nomePet: '',
-            nomeTutor: '',
+            cliente_id: '',
+            nomeCliente: '',
             telefone: '',
             servico: '',
             status: 'Agendado'
@@ -123,9 +113,8 @@ export default function Agendamentos() {
         setFormData({
             data: props.data,
             horario: props.horario,
-            paciente_id: props.paciente_id || '',
-            nomePet: props.nomePet,
-            nomeTutor: props.nomeTutor,
+            cliente_id: props.cliente_id || '',
+            nomeCliente: props.nomeCliente,
             telefone: props.telefone,
             servico: props.servico,
             status: props.status || 'Agendado'
@@ -154,20 +143,19 @@ export default function Agendamentos() {
         }
     };
 
-    const handlePatientSelect = (e) => {
-        const pid = e.target.value;
-        if (!pid) {
-            setFormData(prev => ({ ...prev, paciente_id: '', nomePet: '', nomeTutor: '', telefone: '' }));
+    const handleClientSelect = (e) => {
+        const cid = e.target.value;
+        if (!cid) {
+            setFormData(prev => ({ ...prev, cliente_id: '', nomeCliente: '', telefone: '' }));
             return;
         }
-        const p = pacientes.find(p => p.id === pid);
-        if (p) {
+        const c = clientes.find(c => c.id === cid);
+        if (c) {
             setFormData(prev => ({
                 ...prev,
-                paciente_id: pid,
-                nomePet: p.nome,
-                nomeTutor: p.tutores?.nome,
-                telefone: p.tutores?.whatsapp || ''
+                cliente_id: cid,
+                nomeCliente: c.nome,
+                telefone: c.whatsapp || ''
             }));
         }
     };
@@ -175,8 +163,8 @@ export default function Agendamentos() {
     const handleSave = async (e) => {
         e.preventDefault();
 
-        // Validation: Need either a linked patient OR a manual name
-        if (!formData.data || !formData.horario || (!formData.paciente_id && !formData.nomePet)) {
+        // Validation: Need either a linked client OR a manual name
+        if (!formData.data || !formData.horario || (!formData.cliente_id && !formData.nomeCliente)) {
             toast.error("Preencha os campos obrigatórios.");
             return;
         }
@@ -185,9 +173,8 @@ export default function Agendamentos() {
             const payload = {
                 data: formData.data,
                 horario: formData.horario,
-                paciente_id: formData.paciente_id || null,
-                "nomePet": formData.nomePet, // Legacy/Fallback
-                "nomeTutor": formData.nomeTutor,
+                cliente_id: formData.cliente_id || null,
+                "nomeCliente": formData.nomeCliente,
                 telefone: formData.telefone,
                 servico: formData.servico,
                 status: formData.status
@@ -254,18 +241,17 @@ export default function Agendamentos() {
             <div className="space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <CalendarIcon className="w-8 h-8 text-purple-600" /> Agenda Inteligente
+                        <h1 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f4ecd8] flex items-center gap-2 font-display">
+                            <CalendarIcon className="w-8 h-8 text-[#D4AF37]" /> Agenda BarberPro
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400">Arraste para reagendar. Clique para detalhes.</p>
+                        <p className="text-[#5c4d3c] dark:text-[#a89f91]">Arraste para reagendar. Clique para detalhes.</p>
                     </div>
                     <Button onClick={() => {
                         setFormData({
                             data: new Date().toISOString().split('T')[0],
                             horario: '09:00',
-                            paciente_id: '',
-                            nomePet: '',
-                            nomeTutor: '',
+                            cliente_id: '',
+                            nomeCliente: '',
                             telefone: '',
                             servico: '',
                             status: 'Agendado'
@@ -304,12 +290,12 @@ export default function Agendamentos() {
 
                     {/* Upcoming List Section */}
                     <div className="lg:col-span-1 space-y-4">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Clock className="w-5 h-5 text-purple-600" /> Próximos 7 Dias
+                        <h2 className="text-lg font-bold text-[#1a1a1a] dark:text-[#f4ecd8] flex items-center gap-2 font-display">
+                            <Clock className="w-5 h-5 text-[#D4AF37]" /> Próximos 7 Dias
                         </h2>
                         <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                             {upcomingEvents.length === 0 ? (
-                                <p className="text-gray-500 text-center py-8 bg-gray-50 rounded-lg border border-dashed">
+                                <p className="text-[#5c4d3c] text-center py-8 bg-[#fcf6e8] dark:bg-[#1a1a1a] rounded-lg border border-dashed border-[#D4AF37]/30">
                                     Sem agendamentos próximos.
                                 </p>
                             ) : (
@@ -317,20 +303,17 @@ export default function Agendamentos() {
                                     <Card key={evt.id} className="p-3 hover:shadow-md transition-shadow border-l-4" style={{ borderLeftColor: evt.backgroundColor }}>
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <p className="font-bold text-gray-900 dark:text-white text-sm">{evt.extendedProps.nomePet}</p>
-                                                <p className="text-xs text-gray-500">{evt.extendedProps.nomeTutor}</p>
+                                                <p className="font-bold text-[#1a1a1a] dark:text-[#f4ecd8] text-sm">{evt.extendedProps.nomeCliente}</p>
+                                                <p className="text-xs text-[#5c4d3c] dark:text-[#a89f91]">{evt.extendedProps.servico}</p>
                                             </div>
-                                            <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
+                                            <span className="text-xs font-mono bg-[#D4AF37]/10 dark:bg-[#D4AF37]/20 px-2 py-1 rounded text-[#1a1a1a] dark:text-[#f4ecd8]">
                                                 {new Date(evt.start).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })} • {evt.extendedProps.horario.substring(0, 5)}
                                             </span>
                                         </div>
                                         <div className="flex items-center justify-between mt-2">
-                                            <span className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded">
-                                                {evt.extendedProps.servico || 'Consulta'}
-                                            </span>
                                             <Button
                                                 size="sm"
-                                                className="h-8 w-8 p-0 rounded-full bg-green-500 hover:bg-green-600 text-white border-none flex items-center justify-center"
+                                                className="h-8 w-8 p-0 rounded-full bg-green-600 hover:bg-green-700 text-white border-none flex items-center justify-center"
                                                 title="Enviar Lembrete WhatsApp"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -338,7 +321,7 @@ export default function Agendamentos() {
                                                     if (!phone) return toast.error("Sem telefone.");
 
                                                     const date = new Date(evt.start).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-                                                    const message = `Olá ${evt.extendedProps.nomeTutor}, lembrete: ${evt.extendedProps.nomePet} às ${date}. Confirmado? 🐾`;
+                                                    const message = `Olá ${evt.extendedProps.nomeCliente}, lembrete: ${evt.extendedProps.servico} às ${date}. Confirmado? ✂️`;
 
                                                     window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
                                                 }}
@@ -391,17 +374,17 @@ export default function Agendamentos() {
                             />
                         </div>
 
-                        {/* Patient Selection */}
+                        {/* Client Selection */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Paciente (Opcional)</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Cliente (Opcional)</label>
                             <select
-                                value={formData.paciente_id}
-                                onChange={handlePatientSelect}
+                                value={formData.cliente_id}
+                                onChange={handleClientSelect}
                                 className="flex h-10 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-800 focus:ring-2 focus:ring-purple-500 outline-none"
                             >
                                 <option value="">-- Selecione ou Digite Abaixo --</option>
-                                {pacientes.map(p => (
-                                    <option key={p.id} value={p.id}>{p.nome} ({p.tutores?.nome})</option>
+                                {clientes.map(c => (
+                                    <option key={c.id} value={c.id}>{c.nome}</option>
                                 ))}
                             </select>
                         </div>
@@ -409,29 +392,24 @@ export default function Agendamentos() {
                         {/* Manual Fields (Auto-filled but editable) */}
                         <div className="grid grid-cols-2 gap-4">
                             <Input
-                                label="Nome do Pet"
-                                value={formData.nomePet}
-                                onChange={e => setFormData({ ...formData, nomePet: e.target.value })}
+                                label="Nome do Cliente"
+                                value={formData.nomeCliente}
+                                onChange={e => setFormData({ ...formData, nomeCliente: e.target.value })}
                                 placeholder="Ou digite manualmente"
-                            />
-                            <Input
-                                label="Nome do Tutor"
-                                value={formData.nomeTutor}
-                                onChange={e => setFormData({ ...formData, nomeTutor: e.target.value })}
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Serviço"
-                                value={formData.servico}
-                                onChange={e => setFormData({ ...formData, servico: e.target.value })}
-                                placeholder="Ex: Banho e Tosa"
                             />
                             <Input
                                 label="Telefone / WhatsApp"
                                 value={formData.telefone}
                                 onChange={e => setFormData({ ...formData, telefone: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4">
+                            <Input
+                                label="Serviço"
+                                value={formData.servico}
+                                onChange={e => setFormData({ ...formData, servico: e.target.value })}
+                                placeholder="Ex: Corte de Cabelo"
                             />
                         </div>
 
@@ -446,7 +424,7 @@ export default function Agendamentos() {
                                         if (!phone) return toast.error("Telefone não cadastrado.");
 
                                         const date = new Date(formData.data + 'T' + formData.horario).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-                                        const message = `Olá ${formData.nomeTutor}, lembrete da consulta do(a) ${formData.nomePet} agendada para ${date}. Confirmado? 🐾`;
+                                        const message = `Olá ${formData.nomeCliente}, lembrete: ${formData.servico} agendado para ${date}. Confirmado? ✂️`;
 
                                         window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
                                     }}

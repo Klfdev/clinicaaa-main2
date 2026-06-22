@@ -50,7 +50,7 @@ export default function Onboarding() {
 
         } catch (err) {
             console.error(err);
-            setError(err.message || 'Falha ao criar clínica.');
+            setError(err.message || 'Falha ao criar barbearia.');
         } finally {
             setLoading(false);
         }
@@ -61,10 +61,10 @@ export default function Onboarding() {
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-purple-500/30 mb-4">
-                        <span className="text-white font-bold text-3xl">P</span>
+                        <span className="text-white font-bold text-3xl">B</span>
                     </div>
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Bem-vindo(a)!</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-2">Para começar, configure sua clínica.</p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2">Para começar, configure sua barbearia.</p>
                 </div>
 
                 <Card className="border-t-4 border-t-purple-600">
@@ -82,19 +82,19 @@ export default function Onboarding() {
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seu Nome</label>
                                     <Input
                                         type="text"
-                                        placeholder="Ex: Dr. Silva"
+                                        placeholder="Ex: Carlos Barber"
                                         value={fullName}
                                         onChange={(e) => setFullName(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da Clínica</label>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da Barbearia</label>
                                     <div className="relative">
                                         <Building2 className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
                                         <Input
                                             type="text"
-                                            placeholder="Ex: PetCare Center"
+                                            placeholder="Ex: BarberPro Shop"
                                             value={clinicName}
                                             onChange={(e) => setClinicName(e.target.value)}
                                             className="pl-10"

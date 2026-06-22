@@ -1,0 +1,74 @@
+{
+    "clientes": [
+        {
+            "id": "1",
+            "nome": "João Silva",
+            "whatsapp": "11999999999",
+            "email": "joao@email.com",
+            "cpf": "123.456.789-00",
+            "cep": "01001-000",
+            "rua": "Praça da Sé",
+            "numero": "1",
+            "bairro": "Sé",
+            "cidade": "São Paulo",
+            "estado": "SP",
+            "observacoes": "Cliente preferencial",
+            "created_at": "2024-01-01T10:00:00.000Z"
+        },
+        {
+            "id": "2",
+            "nome": "Maria Oliveira",
+            "whatsapp": "11988888888",
+            "email": "maria@email.com",
+            "cpf": "987.654.321-00",
+            "created_at": "2024-02-15T14:30:00.000Z"
+        }
+    ],
+    "agendamentos": [
+        {
+            "id": "1",
+            "data": "2024-03-20",
+            "horario": "10:00",
+            "cliente_id": "1",
+            "nomeCliente": "João Silva",
+            "telefone": "11999999999",
+            "servico": "Corte de Cabelo",
+            "status": "Confirmado",
+            "created_at": "2024-03-18T09:00:00.000Z"
+        }
+    ],
+    "estoque": [
+        {
+            "id": "1",
+            "nome": "Gel Capilar",
+            "categoria": "Produtos",
+            "quantidade": 15,
+            "minimo": 5,
+            "valor_venda": 25.00,
+            "unidade": "un"
+        },
+        {
+            "id": "2",
+            "nome": "Shampoo",
+            "categoria": "Produtos",
+            "quantidade": 8,
+            "minimo": 10,
+            "valor_venda": 30.00,
+            "unidade": "un"
+        }
+    ],
+    "vendas": [],
+    "financeiro": [],
+    "users": [
+        {
+            "id": "admin-123",
+            "email": "admin@barberpro.com",
+            "password": "admin",
+            "full_name": "Administrador",
+            "role": "admin",
+            "clinic_name": "BarberPro Matriz"
+        }
+    ],
+    "funcionarios": [],
+    "comissoes": []
+}

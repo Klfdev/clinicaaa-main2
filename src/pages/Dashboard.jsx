@@ -14,8 +14,9 @@ import {
     ArrowRight,
     Clock,
     UserPlus,
-    Syringe,
-    Phone
+    Scissors,
+    Phone,
+    Plus
 } from 'lucide-react';
 import {
     Chart as ChartJS,
@@ -43,7 +44,7 @@ ChartJS.register(
 export default function Dashboard() {
     const { profile, organization } = useAuth();
     const [stats, setStats] = useState({
-        pacientes: 0,
+        clientes: 0,
         agendamentosHoje: 0,
         vendasHoje: 0,
         faturamentoMes: 0,
@@ -90,9 +91,9 @@ export default function Dashboard() {
 
                 const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
 
-                // 1. Total Pacientes
-                const { count: pacientesCount } = await supabase
-                    .from('pacientes')
+                // 1. Total Clientes
+                const { count: clientesCount } = await supabase
+                    .from('clientes')
                     .select('*', { count: 'exact', head: true });
 
                 // 2. Agendamentos Hoje
@@ -132,19 +133,21 @@ export default function Dashboard() {
 
                 const faturamento = entradas - saidas;
 
-                // 5. Novos Clientes (Tutores criados este mês)
+                // 5. Novos Clientes (Linkados a criação no mês)
+                // Assuming 'created_at' exists in clientes. If not, this might return 0 or error if field missing.
+                // We'll try-catch or assume it exists/will exist.
                 let novosClientesCount = 0;
-                const { count: tutoresCount, error: tutoresError } = await supabase
-                    .from('tutores')
+                const { count: novosCount, error: novosError } = await supabase
+                    .from('clientes')
                     .select('*', { count: 'exact', head: true })
                     .gte('created_at', firstDayOfMonth);
 
-                if (!tutoresError) {
-                    novosClientesCount = tutoresCount;
+                if (!novosError) {
+                    novosClientesCount = novosCount;
                 }
 
                 setStats({
-                    pacientes: pacientesCount || 0,
+                    clientes: clientesCount || 0,
                     agendamentosHoje: agendamentosCount || 0,
                     vendasHoje: vendasCount || 0,
                     faturamentoMes: faturamento,
@@ -157,13 +160,19 @@ export default function Dashboard() {
                 // 6. Chart Data: Appointments (Last 7 Days + Next 7 Days)
                 const { data: weeklyAppointments } = await supabase
                     .from('agendamentos')
-                    .select('data, horario, "nomePet", servico')
+                    .select('data, horario, "nomeCliente", servico, clientes(nome)')
                     .gte('data', sevenDaysAgo.toISOString().split('T')[0])
                     .lte('data', sevenDaysFromNow.toISOString().split('T')[0])
                     .order('data', { ascending: false })
                     .order('horario', { ascending: true });
 
-                setWeeklyAppointmentsList(weeklyAppointments || []);
+                // Map nomeCliente from relation if available
+                const mappedAppointments = (weeklyAppointments || []).map(app => ({
+                    ...app,
+                    displayNome: app.clientes?.nome || app.nomeCliente || 'Cliente'
+                }));
+
+                setWeeklyAppointmentsList(mappedAppointments);
 
                 const labels = [];
                 const dataPoints = [];
@@ -260,13 +269,13 @@ export default function Dashboard() {
                     ],
                 });
 
-                // 10. Alerts (Appointments + Low Stock + Vaccines)
+                // 10. Alerts (Appointments + Low Stock)
                 const newAlerts = [];
 
                 // 10.1 Appointments
                 const { data: upcomingAppointments } = await supabase
                     .from('agendamentos')
-                    .select('data, horario, "nomePet", servico, telefone, "nomeTutor", pacientes(tutores(nome, whatsapp))')
+                    .select('data, horario, "nomeCliente", servico, telefone, clientes(nome, whatsapp)')
                     .gte('data', todayStr)
                     .lte('data', tomorrowStr)
                     .order('data', { ascending: true })
@@ -275,61 +284,23 @@ export default function Dashboard() {
 
                 upcomingAppointments?.forEach(app => {
                     const isToday = app.data === todayStr;
+                    const clientName = app.clientes?.nome || app.nomeCliente || 'Cliente';
+                    const phone = app.clientes?.whatsapp || app.telefone;
+
                     newAlerts.push({
                         type: 'appointment',
                         title: isToday ? 'Agendamento Hoje' : 'Agendamento Amanhã',
-                        message: `${app.horario} - ${app.nomePet} (${app.servico})`,
+                        message: `${app.horario} - ${clientName} (${app.servico})`,
                         color: 'text-blue-600',
                         bg: 'bg-blue-50 dark:bg-blue-900/10',
                         border: 'border-blue-100 dark:border-blue-900/30',
                         dot: 'bg-blue-500',
-                        phone: app.pacientes?.tutores?.whatsapp || app.telefone,
-                        tutorName: app.pacientes?.tutores?.nome || app.nomeTutor
+                        phone: phone,
+                        clientName: clientName
                     });
                 });
 
-                // 10.2 Vaccines (Next 7 days)
-                const sevenDaysFromNowStr = sevenDaysFromNow.toISOString().split('T')[0];
-
-                const { data: upcomingVaccines } = await supabase
-                    .from('vacinas')
-                    .select('nome_vacina, data_revacina, nome_pet')
-                    .gte('data_revacina', todayStr)
-                    .lte('data_revacina', sevenDaysFromNowStr)
-                    .order('data_revacina', { ascending: true })
-                    .limit(5);
-
-                // Fetch patients for phone mapping (since vacinas doesn't have FK yet)
-                const { data: patientsForMap } = await supabase
-                    .from('pacientes')
-                    .select('nome, tutores(nome, whatsapp)');
-
-                const patientMap = {};
-                patientsForMap?.forEach(p => {
-                    if (p.nome) patientMap[p.nome.toLowerCase()] = {
-                        phone: p.tutores?.whatsapp,
-                        tutor: p.tutores?.nome
-                    };
-                });
-
-                upcomingVaccines?.forEach(vac => {
-                    const isToday = vac.data_revacina === todayStr;
-                    const patientInfo = patientMap[vac.nome_pet?.toLowerCase()];
-
-                    newAlerts.push({
-                        type: 'vaccine',
-                        title: isToday ? 'Vacina Vence Hoje!' : 'Vacina Vencendo',
-                        message: `${vac.nome_pet} - ${vac.nome_vacina} (${new Date(vac.data_revacina).toLocaleDateString('pt-BR')})`,
-                        color: 'text-green-600',
-                        bg: 'bg-green-50 dark:bg-green-900/10',
-                        border: 'border-green-100 dark:border-green-900/30',
-                        dot: 'bg-green-500',
-                        phone: patientInfo?.phone,
-                        tutorName: patientInfo?.tutor
-                    });
-                });
-
-                // 10.3 Low Stock
+                // 10.2 Low Stock (Keep)
                 lowStockItems?.forEach(item => {
                     newAlerts.push({
                         type: 'stock',
@@ -396,7 +367,7 @@ export default function Dashboard() {
                                             <Calendar className="w-4 h-4" />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-gray-900 dark:text-white">{app.nomePet}</p>
+                                            <p className="font-medium text-gray-900 dark:text-white">{app.displayNome}</p>
                                             <p className="text-xs text-gray-500 dark:text-gray-400">{app.servico}</p>
                                         </div>
                                     </div>
@@ -442,35 +413,35 @@ export default function Dashboard() {
 
     const widgets = [
         {
-            title: 'Pacientes Totais',
-            value: stats.pacientes,
+            title: 'Clientes Totais',
+            value: stats.clientes,
             icon: Users,
-            color: 'text-blue-600',
-            bg: 'bg-blue-100 dark:bg-blue-900/30',
-            link: '/pacientes'
+            color: 'text-[#D4AF37]',
+            bg: 'bg-[#1a1a1a] border border-[#D4AF37]/20',
+            link: '/clientes'
         },
         {
-            title: 'Novos Clientes (Mês)',
+            title: 'Novos (Mês)',
             value: stats.novosClientes,
             icon: UserPlus,
-            color: 'text-pink-600',
-            bg: 'bg-pink-100 dark:bg-pink-900/30',
-            link: '/tutores'
+            color: 'text-[#D4AF37]',
+            bg: 'bg-[#1a1a1a] border border-[#D4AF37]/20',
+            link: '/clientes'
         },
         {
             title: 'Vendas Hoje',
             value: stats.vendasHoje,
             icon: TrendingUp,
-            color: 'text-green-600',
-            bg: 'bg-green-100 dark:bg-green-900/30',
+            color: 'text-green-500',
+            bg: 'bg-[#1a1a1a] border border-green-500/20',
             link: '/vendas'
         },
         {
             title: 'Faturamento Mês',
             value: `R$ ${stats.faturamentoMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
             icon: DollarSign,
-            color: 'text-emerald-600',
-            bg: 'bg-emerald-100 dark:bg-emerald-900/30',
+            color: 'text-green-500',
+            bg: 'bg-[#1a1a1a] border border-green-500/20',
             link: '/financeiro'
         }
     ];
@@ -481,42 +452,51 @@ export default function Dashboard() {
                 {/* Welcome Section */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Olá, {profile?.full_name || 'Doutor(a)'}! 👋
+                        <h1 className="text-3xl font-bold text-[#1a1a1a] dark:text-[#f4ecd8] font-display">
+                            Olá, {profile?.full_name?.split(' ')[0] || 'Barbeiro'}! <span className="text-2xl">🎩</span>
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            Aqui está o resumo da sua clínica hoje.
+                        <p className="text-[#5c4d3c] dark:text-[#a89f91] mt-1">
+                            Resumo da sua barbearia hoje.
                         </p>
                     </div>
                     <div className="flex gap-3">
-                        <Button variant="outline" size="sm">
-                            <Clock className="w-4 h-4 mr-2" /> Histórico
-                        </Button>
-                        <Button size="sm">
-                            <Activity className="w-4 h-4 mr-2" /> Novo Atendimento
-                        </Button>
+                        <Link to="/historico">
+                            <Button variant="outline" size="sm">
+                                <Clock className="w-4 h-4 mr-2" /> Histórico
+                            </Button>
+                        </Link>
+                        <Link to="/agendamentos/novo">
+                            <Button size="sm">
+                                <Plus className="w-4 h-4 mr-2" /> Novo Agendamento
+                            </Button>
+                        </Link>
                     </div>
                 </div>
 
-                {/* Public Link Card */}
-                <Card className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-none">
-                    <CardContent className="flex flex-col md:flex-row items-center justify-between p-6 gap-4">
-                        <div>
-                            <h3 className="text-lg font-bold flex items-center gap-2">
-                                <Calendar className="w-5 h-5" /> Agendamento Online
-                            </h3>
-                            <p className="text-purple-100 text-sm mt-1">
-                                Compartilhe este link com seus clientes para eles agendarem sozinhos.
-                            </p>
+                {/* Vintage Banner */}
+                <div className="bg-[#1a1a1a] rounded-xl p-6 text-[#f4ecd8] shadow-2xl border-l-4 border-[#D4AF37] relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <Scissors className="w-48 h-48 transform -rotate-12 text-[#D4AF37]" />
+                    </div>
+                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="flex items-start gap-4">
+                            <div className="p-3 bg-[#D4AF37]/20 rounded-lg border border-[#D4AF37]">
+                                <Calendar className="w-8 h-8 text-[#D4AF37]" />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold font-display text-[#D4AF37]">Link de Agendamento</h2>
+                                <p className="text-gray-400 text-sm mt-1 max-w-md">
+                                    Envie este link para seus clientes agendarem horários diretamente com você.
+                                </p>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-white/10 p-2 rounded-lg w-full md:w-auto">
-                            <code className="text-sm font-mono truncate max-w-[200px] md:max-w-[300px]">
+                        <div className="flex items-center gap-2 w-full md:w-auto bg-[#2c2c2c] p-2 rounded-lg border border-[#D4AF37]/30">
+                            <code className="text-sm px-2 truncate text-[#D4AF37] font-mono max-w-[200px]">
                                 {window.location.origin}/agendar/{organization?.slug}
                             </code>
                             <Button
                                 size="sm"
-                                variant="secondary"
-                                className="bg-white text-purple-600 hover:bg-gray-100 border-none"
+                                className="bg-[#D4AF37] text-[#1a1a1a] hover:bg-[#b5952f]"
                                 onClick={() => {
                                     navigator.clipboard.writeText(`${window.location.origin}/agendar/${organization?.slug}`);
                                     alert('Link copiado!');
@@ -525,19 +505,19 @@ export default function Dashboard() {
                                 Copiar
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
 
                 {/* Widgets Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {widgets.map((widget, index) => (
-                        <Card key={index} className="hover:-translate-y-1 transition-transform duration-300">
+                        <Card key={index} className="hover:-translate-y-1 transition-transform duration-300 border-[#D4AF37]/20">
                             <CardContent className="flex items-center justify-between p-6">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
+                                    <p className="text-sm font-medium text-[#5c4d3c] dark:text-[#a89f91] mb-1 font-sans">
                                         {widget.title}
                                     </p>
-                                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    <h3 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f4ecd8] font-display">
                                         {loading ? <span className="animate-pulse bg-gray-200 dark:bg-gray-700 h-8 w-16 block rounded"></span> : widget.value}
                                     </h3>
                                 </div>
@@ -546,7 +526,7 @@ export default function Dashboard() {
                                 </div>
                             </CardContent>
                             <div className="px-6 pb-4">
-                                <Link to={widget.link} className="text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 flex items-center gap-1 group">
+                                <Link to={widget.link} className="text-xs font-medium text-[#D4AF37] hover:text-[#b5952f] flex items-center gap-1 group">
                                     Ver detalhes <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                                 </Link>
                             </div>
@@ -607,23 +587,14 @@ export default function Dashboard() {
                                                 <p className={`text-sm font-medium ${alert.color}`}>{alert.title}</p>
                                                 <p className="text-xs text-gray-600 dark:text-gray-400">{alert.message}</p>
                                             </div>
-                                            {(alert.type === 'appointment' || alert.type === 'vaccine') && alert.phone && (
+                                            {alert.type === 'appointment' && alert.phone && (
                                                 <Button
                                                     size="sm"
                                                     className="h-8 w-8 p-0 rounded-full bg-green-500 hover:bg-green-600 text-white border-none flex items-center justify-center shrink-0"
                                                     title="Enviar WhatsApp"
                                                     onClick={() => {
                                                         const phone = alert.phone.replace(/\D/g, '');
-                                                        let message = '';
-
-                                                        if (alert.type === 'vaccine') {
-                                                            const isToday = alert.title.includes('Hoje');
-                                                            const status = isToday ? "vence hoje" : "está vencendo";
-                                                            message = `Olá ${alert.tutorName || ''}, tudo bem? 🐾\n\nPassando para lembrar que a vacina do(a) seu pet *${status}*.\n\nVamos deixar a proteção em dia?`;
-                                                        } else {
-                                                            message = `Olá ${alert.tutorName || ''}, lembrete: ${alert.message}. Confirmado? 🐾`;
-                                                        }
-
+                                                        const message = `Olá ${alert.clientName || ''}, lembrete: ${alert.message}. Confirmado? ✂️`;
                                                         window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
                                                     }}
                                                 >

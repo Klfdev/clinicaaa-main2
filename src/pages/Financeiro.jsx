@@ -216,10 +216,10 @@ export default function Financeiro() {
             <div className="space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <DollarSign className="w-8 h-8 text-purple-600" /> Financeiro
+                        <h1 className="text-2xl font-bold text-[#1a1a1a] dark:text-[#f4ecd8] flex items-center gap-2 font-display">
+                            <DollarSign className="w-8 h-8 text-[#D4AF37]" /> Financeiro
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400">Controle de fluxo de caixa.</p>
+                        <p className="text-[#5c4d3c] dark:text-[#a89f91]">Controle de fluxo de caixa.</p>
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={gerarRelatorioPDF}>
@@ -233,37 +233,37 @@ export default function Financeiro() {
 
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30">
+                    <Card className="bg-[#1a1a1a] border-green-500/30">
                         <CardContent className="p-6 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-green-600 dark:text-green-400">Entradas</p>
-                                <h3 className="text-2xl font-bold text-green-700 dark:text-green-300">R$ {resumo.entradas.toFixed(2)}</h3>
+                                <p className="text-sm font-medium text-green-400">Entradas</p>
+                                <h3 className="text-2xl font-bold text-green-500 font-display">R$ {resumo.entradas.toFixed(2)}</h3>
                             </div>
-                            <div className="p-3 bg-green-100 dark:bg-green-900/40 rounded-full text-green-600 dark:text-green-400">
+                            <div className="p-3 bg-green-500/10 rounded-full text-green-500">
                                 <TrendingUp className="w-6 h-6" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30">
+                    <Card className="bg-[#1a1a1a] border-red-500/30">
                         <CardContent className="p-6 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-red-600 dark:text-red-400">Saídas</p>
-                                <h3 className="text-2xl font-bold text-red-700 dark:text-red-300">R$ {resumo.saidas.toFixed(2)}</h3>
+                                <p className="text-sm font-medium text-red-400">Saídas</p>
+                                <h3 className="text-2xl font-bold text-red-500 font-display">R$ {resumo.saidas.toFixed(2)}</h3>
                             </div>
-                            <div className="p-3 bg-red-100 dark:bg-red-900/40 rounded-full text-red-600 dark:text-red-400">
+                            <div className="p-3 bg-red-500/10 rounded-full text-red-500">
                                 <TrendingDown className="w-6 h-6" />
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30">
+                    <Card className="bg-[#1a1a1a] border-[#D4AF37]/30">
                         <CardContent className="p-6 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Saldo</p>
-                                <h3 className={`text-2xl font-bold ${resumo.saldo >= 0 ? 'text-blue-700 dark:text-blue-300' : 'text-red-700 dark:text-red-300'}`}>
+                                <p className="text-sm font-medium text-[#D4AF37]">Saldo</p>
+                                <h3 className={`text-2xl font-bold font-display ${resumo.saldo >= 0 ? 'text-[#D4AF37]' : 'text-red-500'}`}>
                                     R$ {resumo.saldo.toFixed(2)}
                                 </h3>
                             </div>
-                            <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-full text-blue-600 dark:text-blue-400">
+                            <div className="p-3 bg-[#D4AF37]/10 rounded-full text-[#D4AF37]">
                                 <DollarSign className="w-6 h-6" />
                             </div>
                         </CardContent>

@@ -5,7 +5,7 @@ import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card, { CardContent } from '../components/ui/Card';
 import Modal from '../components/ui/Modal';
-import { Plus, Trash2, ShoppingCart, FileText, Search, X, Download, Eye, User } from 'lucide-react';
+import { Plus, Trash2, ShoppingCart, FileText, Search, X, Download, Eye, User, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { pdfService } from '../lib/pdfService';
 import toast, { Toaster } from 'react-hot-toast';

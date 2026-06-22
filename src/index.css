@@ -1,13 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Poppins:wght@300;400;500;600&display=swap');
 
 @import "tailwindcss";
 
 @theme {
+  --font-display: 'Playfair Display', serif;
   --font-sans: 'Poppins', sans-serif;
+  
+  --color-vintage-gold: #D4AF37;
+  --color-vintage-gold-hover: #b5952f;
+  --color-vintage-black: #1a1a1a; /* Charcoal */
+  --color-vintage-dark: #2c2c2c;
+  --color-vintage-cream: #f4ecd8;
+  --color-vintage-brown: #3E2723; /* Dark leather */
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Vintage Base Styles */
 body {
   font-family: var(--font-sans);
+  background-color: var(--color-vintage-cream);
+  color: var(--color-vintage-black);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+}
+
+/* Button Overrides for Vintage Feel */
+.btn-vintage {
+    background-color: var(--color-vintage-gold);
+    color: var(--color-vintage-black);
+    font-weight: 600;
+    border: 1px solid var(--color-vintage-gold);
+    transition: all 0.3s ease;
+}
+
+.btn-vintage:hover {
+    background-color: var(--color-vintage-gold-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+.dark body {
+    background-color: var(--color-vintage-black);
+    color: var(--color-vintage-cream);
 }

@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { auth, db } from '../lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card, { CardContent } from '../components/ui/Card';
@@ -15,6 +13,7 @@ export default function Register() {
     const [clinicName, setClinicName] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const { register } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -23,23 +22,10 @@ export default function Register() {
         setLoading(true);
 
         try {
-            // 1. Sign Up User with Firebase
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-
-            // Update Auth Profile
-            await updateProfile(user, {
-                displayName: fullName
-            });
-
-            // 2. Create User/Clinic Document in Firestore
-            // Storing basic info. You can expand this structure as needed.
-            await setDoc(doc(db, "users", user.uid), {
-                name: fullName,
-                email: email,
-                clinicName: clinicName,
-                createdAt: new Date(),
-                role: 'owner'
+            // Register using AuthContext (mocks Firebase/Supabase)
+            await register(email, password, {
+                full_name: fullName,
+                clinic_name: clinicName
             });
 
             // Success!
@@ -47,9 +33,9 @@ export default function Register() {
 
         } catch (err) {
             console.error(err);
-            if (err.code === 'auth/email-already-in-use') {
+            if (err.message.includes('already-in-use') || err.message.includes('email')) {
                 setError('Este email já está em uso.');
-            } else if (err.code === 'auth/weak-password') {
+            } else if (err.message.includes('password')) {
                 setError('A senha deve ter pelo menos 6 caracteres.');
             } else {
                 setError('Falha no cadastro. Tente novamente.');
@@ -64,9 +50,9 @@ export default function Register() {
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-purple-500/30 mb-4">
-                        <span className="text-white font-bold text-3xl">P</span>
+                        <span className="text-white font-bold text-3xl">B</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Criar Nova Clínica</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Criar Nova Barbearia</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Comece a usar o sistema agora mesmo</p>
                 </div>
 
@@ -96,7 +82,7 @@ export default function Register() {
                                     <Building2 className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
                                     <Input
                                         type="text"
-                                        placeholder="Nome da Clínica"
+                                        placeholder="Nome da Barbearia"
                                         value={clinicName}
                                         onChange={(e) => setClinicName(e.target.value)}
                                         className="pl-10"
@@ -133,7 +119,7 @@ export default function Register() {
                                 size="lg"
                                 isLoading={loading}
                             >
-                                Criar Conta e Clínica
+                                Criar Conta e Barbearia
                             </Button>
 
                             <div className="text-center text-sm">

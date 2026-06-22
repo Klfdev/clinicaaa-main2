@@ -42,9 +42,9 @@ export default function Login() {
             <div className="w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-purple-500/30 mb-4">
-                        <span className="text-white font-bold text-3xl">P</span>
+                        <span className="text-white font-bold text-3xl">B</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">PetClínica São Lázaro</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">BarberPro SaaS</h1>
                     <p className="text-gray-500 dark:text-gray-400 mt-2">Faça login para acessar o sistema</p>
                 </div>
 
@@ -111,7 +111,7 @@ export default function Login() {
                             <div className="text-center text-sm">
                                 <span className="text-gray-500">Não tem uma conta? </span>
                                 <Link to="/register" className="text-purple-600 hover:text-purple-700 font-medium">
-                                    Criar Nova Clínica
+                                    Criar Nova Barbearia
                                 </Link>
                             </div>
                         </form>
@@ -119,7 +119,7 @@ export default function Login() {
                 </Card>
 
                 <p className="text-center text-sm text-gray-500 mt-8">
-                    &copy; {new Date().getFullYear()} PetClínica São Lázaro. Todos os direitos reservados.
+                    &copy; {new Date().getFullYear()} BarberPro SaaS. Todos os direitos reservados.
                 </p>
             </div>
         </div>

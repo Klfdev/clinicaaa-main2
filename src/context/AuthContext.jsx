@@ -1,106 +1,117 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
-const AuthContext = createContext();
+const AuthContext = createContext({});
 
-export function useAuth() {
-    return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);
 
-export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(null);
-    // const [organization, setOrganization] = useState(null); // Temporarily disabled for Firebase migration
-    const [loading, setLoading] = useState(true);
+export const AuthProvider = ({ children }) => {
+    // --- MOCK AUTHENTICATION START ---
+    const [user, setUser] = useState({ id: 'mock-user-id', email: 'admin@barberpro.com' });
+    const [profile, setProfile] = useState({ full_name: 'Barbeiro Admin', role: 'admin', email: 'admin@barberpro.com' });
+    const [organization, setOrganization] = useState({
+        id: 'mock-org-id',
+        name: 'BarberPro Demo',
+        slug: 'barberpro-demo'
+    });
+    const [loading, setLoading] = useState(false); // No loading, instant access
+    // --- MOCK AUTHENTICATION END ---
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            console.log("AuthContext: Auth state change", currentUser);
-            if (currentUser) {
-                setUser(currentUser);
-                // Optional: Fetch profile from Firestore if you have a 'users' collection
-                // await fetchProfile(currentUser.uid);
-                setProfile({ id: currentUser.uid, email: currentUser.email }); // Mock profile for now to pass guards
-                setLoading(false);
-            } else {
+        // ACTIVATED BYPASS: Real auth logic disabled for development
+        console.log("⚠️ Auth Bypass Active: Using mock admin user.");
+        /*
+        // Check active session
+        checkUser();
+
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session?.user) {
+                setUser(session.user);
+                setProfile(session.user); // In our mock, user object has profile data
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
-                // setOrganization(null);
-                setLoading(false);
             }
         });
 
-        return () => unsubscribe();
+        return () => {
+            if (listener?.subscription) listener.subscription.unsubscribe();
+        };
+        */
     }, []);
 
-    // Helper to fetch extra user data if needed
-    // const fetchProfile = async (userId) => {
-    //     try {
-    //         const docRef = doc(db, "users", userId);
-    //         const docSnap = await getDoc(docRef);
-    //         if (docSnap.exists()) {
-    //             setProfile(docSnap.data());
-    //         }
-    //     } catch (error) {
-    //         console.error("Error fetching profile:", error);
-    //     }
-    // };
+    const checkUser = async () => {
+        try {
+            const { data } = await supabase.auth.getUser();
+            if (data?.user) {
+                setUser(data.user);
+                setProfile(data.user);
+                // Mock Org
+                setOrganization({
+                    id: 'org-123',
+                    name: data.user.clinic_name || 'Minha Barbearia',
+                    slug: 'minha-barbearia'
+                });
+            }
+        } catch (error) {
+            console.error("Auth Check Error:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const login = async (email, password) => {
-        try {
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            return userCredential.user;
-        } catch (error) {
-            console.error("Login Error:", error);
-            throw error;
-        }
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        return data;
     };
 
-    const logout = async () => {
-        try {
-            await signOut(auth);
-        } catch (error) {
-            console.error("Logout Error:", error);
-            throw error;
-        }
+    const register = async (email, password, data) => {
+        const { data: result, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: { data }
+        });
+        if (error) throw error;
+        return result;
     };
 
-    const value = {
-        user,
-        profile,
-        // organization,
-        // fetchProfile,
-        login,
-        logout,
-        loading
+    const signOut = async () => {
+        await supabase.auth.signOut();
+        setUser(null);
+        setProfile(null);
+    };
+
+    const fetchProfile = async () => {
+        // Refetch profile if needed
+        await checkUser();
     };
 
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{
+            user,
+            profile,
+            organization,
+            login,
+            register, // Exposed as register
+            signUp: register, // Exposed alias
+            signOut,
+            loading,
+            fetchProfile
+        }}>
             {!loading && children}
         </AuthContext.Provider>
     );
-}
+};
 
-export function PrivateRoute() {
-    const { user, loading } = useAuth(); // Removed profile check constraint for now to ease migration
-    const location = useLocation();
+// Private Route Component
+import { Navigate, Outlet } from 'react-router-dom';
 
-    if (loading) {
-        return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-    }
+export const PrivateRoute = () => {
+    const { user, loading } = useAuth();
 
-    if (!user) {
-        return <Navigate to="/login" replace />;
-    }
+    if (loading) return <div className="h-screen flex items-center justify-center">Carregando...</div>;
 
-    // Adapt onboarding check if necessary later
-    // if (!profile && location.pathname !== '/onboarding') {
-    //     return <Navigate to="/onboarding" replace />;
-    // }
-
-    return <Outlet />;
-}
+    return user ? <Outlet /> : <Navigate to="/login" replace />;
+};
